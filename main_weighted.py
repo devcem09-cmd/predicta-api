@@ -18,10 +18,18 @@ from fastapi.middleware.cors import CORSMiddleware
 try:
     from app.config import MERGED_DATA_FILE, DEFAULT_ODDS
 except ImportError:
-    # Fallback if config doesn't exist
     MERGED_DATA_FILE = BASE_DIR / "data" / "merged_all.csv"
     DEFAULT_ODDS = {"1": 2.50, "X": 3.20, "2": 2.80}
     print("⚠️  Config not found, using defaults")
+
+# ⭐ NEW: Import Nesine fetcher
+try:
+    from nesine_fetcher_fixed import fetch_upcoming_matches, clear_cache
+    NESINE_AVAILABLE = True
+    print("✅ Nesine fetcher loaded")
+except ImportError as e:
+    print(f"⚠️  Nesine fetcher import failed: {e}")
+    NESINE_AVAILABLE = False
 
 # ⭐ NEW: Weighted system import
 WEIGHTED_AVAILABLE = False
@@ -37,7 +45,7 @@ except ImportError as e:
     print(f"⚠️  Weighted system import failed: {e}")
     WEIGHTED_AVAILABLE = False
 
-# Fallback imports - FIXED
+# Fallback imports
 try:
     from app.predictor import EnhancedEnsemblePredictor
     from app.feature_engineer import MatchFeatureEngineer
@@ -143,7 +151,6 @@ print("\n🎯 Initializing Weighted Predictor...")
 
 if WEIGHTED_AVAILABLE:
     try:
-        # Check for weighted model
         model_dir = BASE_DIR / "models"
         model_path = model_dir / "weighted_model.pkl"
         
@@ -169,7 +176,6 @@ if WEIGHTED_AVAILABLE:
 if not WEIGHTED_AVAILABLE or PREDICTOR is None:
     print("🔧 Attempting to initialize Standard Predictor...")
     try:
-        # Try to get MODEL_PATH from config
         try:
             from app.config import MODEL_PATH
         except ImportError:
@@ -215,7 +221,7 @@ WEB_DIR = BASE_DIR / "web"
 if WEB_DIR.exists():
     app.mount("/ui", StaticFiles(directory=str(WEB_DIR), html=True), name="ui")
 
-MATCHES_CACHE = {"data": [], "timestamp": None, "ttl_minutes": 30}
+MATCHES_CACHE = {"data": [], "timestamp": None, "ttl_minutes": 5}
 
 
 @app.get("/api/status")
@@ -225,6 +231,7 @@ def api_status():
         "status": "running",
         "predictor_type": PREDICTOR_TYPE,
         "weighted_system": WEIGHTED_AVAILABLE,
+        "nesine_fetcher": NESINE_AVAILABLE,
         "web_ui_available": WEB_DIR.exists(),
         "dataset_loaded": DATAFRAME is not None,
         "model_loaded": PREDICTOR is not None,
@@ -258,6 +265,109 @@ def api_status():
     return status
 
 
+def _convert_nesine_to_api_format(nesine_matches):
+    """Convert Nesine format to API format"""
+    api_matches = []
+    
+    for m in nesine_matches:
+        # Extract 1X2 odds
+        odds_1x2 = m.get("odds_1x2", {})
+        
+        # Skip matches without valid odds
+        if not odds_1x2.get("1") or odds_1x2.get("1") == 0:
+            continue
+        
+        api_match = {
+            "match_id": m.get("match_id", ""),
+            "date": m.get("date", ""),
+            "league_code": m.get("league_code", ""),
+            "league_name": m.get("league_name", "Unknown League"),
+            "home_team": m.get("home_team", "Unknown Home"),
+            "away_team": m.get("away_team", "Unknown Away"),
+            "odds": {
+                "1": odds_1x2.get("1", 0.0),
+                "X": odds_1x2.get("X", 0.0),
+                "2": odds_1x2.get("2", 0.0)
+            },
+            "is_live": m.get("is_live", False),
+            
+            # Additional odds if available
+            "odds_over_under": m.get("odds_over_under", {}),
+            "odds_btts": m.get("odds_btts", {}),
+        }
+        
+        api_matches.append(api_match)
+    
+    return api_matches
+
+
+@app.get("/api/matches/upcoming")
+def get_upcoming(force_refresh: bool = Query(False)):
+    """Get upcoming matches from Nesine (cached)"""
+    now = datetime.now()
+    
+    # Check cache
+    if (not force_refresh and MATCHES_CACHE["data"] and MATCHES_CACHE["timestamp"]
+        and (now - MATCHES_CACHE["timestamp"]).total_seconds() < MATCHES_CACHE["ttl_minutes"]*60):
+        return {
+            "success": True, 
+            "cached": True, 
+            "source": "nesine_cached" if NESINE_AVAILABLE else "dummy_cached",
+            "count": len(MATCHES_CACHE["data"]),
+            "matches": MATCHES_CACHE["data"], 
+            "timestamp": MATCHES_CACHE["timestamp"].isoformat()
+        }
+    
+    # Fetch fresh data
+    if NESINE_AVAILABLE:
+        try:
+            print("🌐 Fetching matches from Nesine API...")
+            nesine_matches = fetch_upcoming_matches(force_refresh=True)
+            
+            if nesine_matches:
+                # Convert to API format
+                api_matches = _convert_nesine_to_api_format(nesine_matches)
+                
+                if api_matches:
+                    MATCHES_CACHE["data"] = api_matches
+                    MATCHES_CACHE["timestamp"] = now
+                    
+                    print(f"✅ Loaded {len(api_matches)} matches from Nesine")
+                    
+                    return {
+                        "success": True, 
+                        "cached": False,
+                        "source": "nesine",
+                        "count": len(api_matches), 
+                        "matches": api_matches, 
+                        "timestamp": now.isoformat()
+                    }
+                else:
+                    print("⚠️  No valid matches with odds found")
+            else:
+                print("⚠️  Nesine returned empty data")
+                
+        except Exception as e:
+            print(f"❌ Nesine fetch error: {e}")
+            logging.error(f"Nesine fetch failed: {e}", exc_info=True)
+    
+    # Fallback to dummy data
+    print("ℹ️  Using dummy test data")
+    dummy_data = _dummy_upcoming()
+    MATCHES_CACHE["data"] = dummy_data
+    MATCHES_CACHE["timestamp"] = now
+    
+    return {
+        "success": True, 
+        "cached": False,
+        "source": "dummy_fallback",
+        "count": len(dummy_data), 
+        "matches": dummy_data, 
+        "timestamp": now.isoformat(),
+        "warning": "Using dummy data. Nesine fetcher may not be working."
+    }
+
+
 def _dummy_upcoming():
     """Dummy matches for testing"""
     now = datetime.now()
@@ -287,33 +397,6 @@ def _dummy_upcoming():
     return out
 
 
-@app.get("/api/matches/upcoming")
-def get_upcoming(force_refresh: bool = Query(False)):
-    """Get upcoming matches (cached)"""
-    now = datetime.now()
-    
-    if (not force_refresh and MATCHES_CACHE["data"] and MATCHES_CACHE["timestamp"]
-        and (now - MATCHES_CACHE["timestamp"]).total_seconds() < MATCHES_CACHE["ttl_minutes"]*60):
-        return {
-            "success": True, 
-            "cached": True, 
-            "count": len(MATCHES_CACHE["data"]),
-            "matches": MATCHES_CACHE["data"], 
-            "timestamp": MATCHES_CACHE["timestamp"].isoformat()
-        }
-    
-    data = _dummy_upcoming()
-    MATCHES_CACHE["data"], MATCHES_CACHE["timestamp"] = data, now
-    
-    return {
-        "success": True, 
-        "cached": False, 
-        "count": len(data), 
-        "matches": data, 
-        "timestamp": now.isoformat()
-    }
-
-
 @app.get("/api/matches/upcoming/predicted")
 def get_predicted_upcoming(force_refresh: bool = Query(False)):
     """Get predicted upcoming matches"""
@@ -338,6 +421,7 @@ def get_predicted_upcoming(force_refresh: bool = Query(False)):
         "total": len(resp["matches"]),
         "predictor_type": PREDICTOR_TYPE,
         "weighted_system": WEIGHTED_AVAILABLE,
+        "data_source": resp.get("source", "unknown")
     }
     
     if PREDICTOR_TYPE == "weighted":
@@ -356,7 +440,6 @@ def get_predicted_upcoming(force_refresh: bool = Query(False)):
                 feature_engineer=FEATURE_ENGINEER
             )
             
-            # Format prediction result
             prediction_result = {
                 "prediction": pred.get("prediction"),
                 "prediction_name": pred.get("prediction_name"),
@@ -365,14 +448,12 @@ def get_predicted_upcoming(force_refresh: bool = Query(False)):
                 "method": pred.get("prediction_method", "unknown") if PREDICTOR_TYPE == "standard" else "weighted",
             }
             
-            # Additional info for weighted system
             if PREDICTOR_TYPE == "weighted":
                 prediction_result["odds_confidence"] = pred.get("odds_confidence", 0.0)
                 prediction_result["feature_priorities"] = pred.get("feature_priorities", {})
                 if "odds_analysis" in pred:
                     prediction_result["odds_analysis"] = pred["odds_analysis"]
             
-            # Model info for standard system
             elif PREDICTOR_TYPE == "standard" and "models_used" in pred:
                 pred_label = pred.get("prediction", "?")
                 if pred_label == "1":
@@ -401,6 +482,7 @@ def get_predicted_upcoming(force_refresh: bool = Query(False)):
     return {
         "success": True, 
         "cached": resp.get("cached", False),
+        "source": resp.get("source", "unknown"),
         "count": len(resp["matches"]), 
         "matches": resp["matches"], 
         "timestamp": resp.get("timestamp"),
@@ -450,6 +532,21 @@ def predict_match(data: dict):
         )
 
 
+@app.post("/api/matches/clear-cache")
+def clear_matches_cache():
+    """Clear matches cache"""
+    global MATCHES_CACHE
+    MATCHES_CACHE = {"data": [], "timestamp": None, "ttl_minutes": 5}
+    
+    if NESINE_AVAILABLE:
+        clear_cache()
+    
+    return {
+        "success": True,
+        "message": "Cache cleared"
+    }
+
+
 @app.get("/api/model/info")
 def get_model_info():
     """Get model information"""
@@ -457,6 +554,7 @@ def get_model_info():
         info = {
             "predictor_type": PREDICTOR_TYPE,
             "weighted_system": WEIGHTED_AVAILABLE,
+            "nesine_fetcher": NESINE_AVAILABLE,
         }
         
         if PREDICTOR_TYPE == "weighted" and PREDICTOR:
@@ -522,6 +620,7 @@ def root():
     """API information"""
     features = [
         "⚖️  Weighted Feature System (75% Odds, 15% H2H, 10% Form)" if WEIGHTED_AVAILABLE else "🧠 Smart Model Selection",
+        "🌐 Nesine.com Live Data Integration" if NESINE_AVAILABLE else "📊 Manual Data Input",
         "📊 Advanced Features",
         "🤖 Ensemble Learning",
         "⚡ Real-time Predictions",
@@ -532,9 +631,10 @@ def root():
     return {
         "message": f"Predicta API - {PREDICTOR_TYPE.upper()} Mode ✅",
         "version": "3.0",
-        "description": "Advanced football match prediction",
+        "description": "Advanced football match prediction with Nesine.com integration",
         "predictor_type": PREDICTOR_TYPE,
         "weighted_system": WEIGHTED_AVAILABLE,
+        "nesine_fetcher": NESINE_AVAILABLE,
         "model_loaded": PREDICTOR is not None,
         "features": features,
         "endpoints": {
@@ -544,7 +644,8 @@ def root():
             "performance_stats": "/api/performance/stats",
             "upcoming_matches": "/api/matches/upcoming",
             "predicted_matches": "/api/matches/upcoming/predicted",
-            "predict_single": "/api/predict/match [POST]"
+            "predict_single": "/api/predict/match [POST]",
+            "clear_cache": "/api/matches/clear-cache [POST]"
         }
     }
 
@@ -558,9 +659,14 @@ async def startup_event():
     print(f"📁 Base Directory: {BASE_DIR}")
     print(f"🎯 Predictor Type: {PREDICTOR_TYPE.upper()}")
     print(f"⚖️  Weighted System: {'ENABLED' if WEIGHTED_AVAILABLE else 'DISABLED'}")
+    print(f"🌐 Nesine Fetcher: {'ENABLED ✅' if NESINE_AVAILABLE else 'DISABLED ⚠️'}")
     print(f"🤖 Model Status: {'LOADED ✅' if PREDICTOR else 'NOT LOADED ⚠️'}")
     print(f"🌐 Web UI: {'Available' if WEB_DIR.exists() else 'Not Available'}")
     print(f"📊 Dataset: {'Loaded' if DATAFRAME is not None else 'Not Loaded'}")
+    
+    if not NESINE_AVAILABLE:
+        print(f"⚠️  WARNING: Nesine fetcher not available!")
+        print(f"   Using dummy test data instead of real matches")
     
     if PREDICTOR_TYPE == "no_model":
         print(f"⚠️  WARNING: No trained model found!")
@@ -579,7 +685,7 @@ async def startup_event():
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(
-        "main_weighted:app", 
+        "main_weighted_nesine_integrated:app", 
         host="0.0.0.0", 
         port=8000, 
         reload=True,
