@@ -1,40 +1,30 @@
 services:
-  - type: web
-    name: predicta-api
+  - name: predicta-api
+    type: web
     env: python
+    region: frankfurt
     plan: free
+    branch: main
 
     buildCommand: |
-      echo "📦 Installing dependencies..."
       pip install --upgrade pip
       pip install -r requirements.txt
-      pip install gdown
 
-      echo "📥 Downloading weighted model from Google Drive..."
-      mkdir -p models
-      FILE_ID="1nrza381tsPprpML7mAafd6DNU93y5BT7"
-      gdown --id "$FILE_ID" -O models/weighted_model.pkl --fuzzy
-
-      # Boyut kontrolü (Linux & Mac uyumlu)
-      if [ -f models/weighted_model.pkl ]; then
-        FILE_SIZE=$(stat -c%s models/weighted_model.pkl 2>/dev/null || stat -f%z models/weighted_model.pkl)
-        SIZE_MB=$((FILE_SIZE / 1024 / 1024))
-        echo "✅ Model downloaded successfully: ${SIZE_MB} MB"
-      else
-        echo "❌ ERROR: Model file not found after download!"
-        exit 1
-      fi
-
-      # Web klasörüne taşı
-      mkdir -p web/models
-      cp models/weighted_model.pkl web/models/
-
-      echo "🎉 Build completed successfully!"
-
-    startCommand: uvicorn web.main_weighted:app --host 0.0.0.0 --port $PORT
+    startCommand: uvicorn main_weighted:app --host 0.0.0.0 --port 8000
 
     envVars:
-      - key: PYTHON_VERSION
-        value: 3.11.0
-      - key: TZ
-        value: Europe/Istanbul
+      - key: PYTHONUNBUFFERED
+        value: "1"
+      - key: MODEL_PATH
+        value: models/weighted_model.pkl
+      - key: SCALER_PATH
+        value: models/weighted_scaler.pkl
+      - key: METADATA_PATH
+        value: models/weighted_model_metadata.json
+      - key: DATA_PATH
+        value: data/merged_all.csv
+      - key: PORT
+        value: 8000
+
+    healthCheckPath: /api/status
+    autoDeploy: true
