@@ -6,8 +6,14 @@ services:
     plan: free
     branch: main
 
+    # Python sürümünü sabitle
+    pythonVersion: 3.11
+
     buildCommand: |
       pip install --upgrade pip
+      pip install --upgrade wheel setuptools
+      pip install --upgrade cython
+      pip install scikit-learn==1.5.2
       pip install -r requirements.txt
 
     startCommand: uvicorn main_weighted:app --host 0.0.0.0 --port 8000
