@@ -1,0 +1,113 @@
+{
+  "training_date": "2025-10-30T12:01:54.294476",
+  "model_type": "weighted_ensemble",
+  "feature_weights": {
+    "odds": 0.75,
+    "h2h": 0.15,
+    "form": 0.1
+  },
+  "n_features": 41,
+  "feature_names": [
+    "odds_home",
+    "odds_draw",
+    "odds_away",
+    "odds_home_prob",
+    "odds_draw_prob",
+    "odds_away_prob",
+    "odds_market_margin",
+    "odds_market_confidence",
+    "odds_favorite_odds",
+    "odds_underdog_odds",
+    "odds_spread",
+    "odds_home_value",
+    "odds_draw_value",
+    "odds_away_value",
+    "odds_draw_odds_level",
+    "odds_draw_market_view",
+    "odds_clear_favorite",
+    "odds_balanced_match",
+    "h2h_matches",
+    "h2h_home_win_rate",
+    "h2h_draw_rate",
+    "h2h_away_win_rate",
+    "h2h_avg_home_goals",
+    "h2h_avg_away_goals",
+    "h2h_avg_total_goals",
+    "h2h_high_scoring",
+    "h2h_draw_tendency",
+    "home_form_win_rate",
+    "home_form_points_per_game",
+    "home_form_avg_goals_scored",
+    "home_form_avg_goals_conceded",
+    "home_form_momentum",
+    "away_form_win_rate",
+    "away_form_points_per_game",
+    "away_form_avg_goals_scored",
+    "away_form_avg_goals_conceded",
+    "away_form_momentum",
+    "form_diff_momentum",
+    "form_diff_ppg",
+    "odds_h2h_alignment",
+    "odds_form_agreement"
+  ],
+  "training_samples": 84377,
+  "test_samples": 21095,
+  "class_weights": {
+    "0": 1.0,
+    "1": 1.5,
+    "2": 1.0
+  },
+  "ensemble_weights": {
+    "xgboost": 0.23792142072295785,
+    "lightgbm": 0.258849018890655,
+    "catboost": 0.2582029520256515,
+    "random_forest": 0.24502660836073573
+  },
+  "test_accuracy": 0.7148139369518843,
+  "test_logloss": 0.6406472775206697,
+  "draw_recall": 0.6568569746909947,
+  "draw_precision": 0.6057535733671069,
+  "individual_scores": {
+    "xgboost": {
+      "train_accuracy": 0.7653388956706212,
+      "test_accuracy": 0.7198862289642095,
+      "train_logloss": 0.5345596756237315,
+      "test_logloss": 0.6324778760214507,
+      "draw_accuracy": 0.5738669805768098,
+      "cv_mean": 0.7204214310921493,
+      "cv_std": 0.0014501569509451217
+    },
+    "lightgbm": {
+      "train_accuracy": 0.7524088317906539,
+      "test_accuracy": 0.712633325432567,
+      "train_logloss": 0.5580337924133141,
+      "test_logloss": 0.6422353734007603,
+      "draw_accuracy": 0.694918579556602,
+      "cv_mean": 0.7142822792833127,
+      "cv_std": 0.003012392800421937
+    },
+    "catboost": {
+      "train_accuracy": 0.7223532479230121,
+      "test_accuracy": 0.7106897369044798,
+      "train_logloss": 0.6212417899937055,
+      "test_logloss": 0.6472106542815448,
+      "draw_accuracy": 0.6933490288404944,
+      "cv_mean": 0.7126230663752162,
+      "cv_std": 0.0031447538417992333
+    },
+    "random_forest": {
+      "train_accuracy": 0.8057053462436446,
+      "test_accuracy": 0.6990756103342024,
+      "train_logloss": 0.49615524432091956,
+      "test_logloss": 0.6654613961865776,
+      "draw_accuracy": 0.633313713949382,
+      "cv_mean": 0.7032603569390675,
+      "cv_std": 0.0008780437531160938
+    }
+  },
+  "feature_breakdown": {
+    "odds_features": 20,
+    "h2h_features": 9,
+    "form_features": 13
+  }
+}

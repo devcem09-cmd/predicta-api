@@ -1,0 +1,834 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PredictAAI - Premium Football Predictions</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #000000;
+            color: #fff;
+            overflow: hidden;
+            height: 100vh;
+        }
+
+        /* Splash Screen */
+        .splash-screen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(135deg, #0a1628 0%, #1a2942 100%);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 9999;
+            transition: opacity 0.5s ease;
+        }
+
+        .splash-screen.hidden {
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        .football-container {
+            width: 300px;
+            height: 300px;
+            perspective: 1200px;
+            margin-bottom: 40px;
+        }
+
+        .football {
+            width: 100%;
+            height: 100%;
+            position: relative;
+            transform-style: preserve-3d;
+            animation: rotateBall 6s linear infinite;
+        }
+
+        @keyframes rotateBall {
+            0% { transform: rotateY(0deg) rotateX(-10deg); }
+            100% { transform: rotateY(360deg) rotateX(-10deg); }
+        }
+
+        .football-sphere {
+            width: 100%;
+            height: 100%;
+            border-radius: 50%;
+            background: radial-gradient(circle at 30% 30%, #3d5a7f, #1a2938, #0a0f1a);
+            box-shadow: 0 0 100px rgba(255, 193, 7, 0.6);
+            position: relative;
+        }
+
+        .panel {
+            position: absolute;
+            background: linear-gradient(135deg, rgba(30, 45, 60, 0.95), rgba(15, 25, 40, 0.98));
+            border: 2px solid #ffc107;
+            box-shadow: 0 0 20px rgba(255, 193, 7, 0.7);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #ffc107;
+            font-size: 20px;
+            animation: panelGlow 2s ease-in-out infinite;
+        }
+
+        @keyframes panelGlow {
+            0%, 100% { box-shadow: 0 0 20px rgba(255, 193, 7, 0.7); }
+            50% { box-shadow: 0 0 40px rgba(255, 235, 59, 1); }
+        }
+
+        .p1 { width: 70px; height: 70px; top: 25%; left: 50%; transform: translate(-50%, -50%); clip-path: polygon(50% 0%, 100% 38%, 82% 100%, 18% 100%, 0% 38%); }
+        .p2 { width: 60px; height: 60px; top: 40%; left: 25%; transform: translate(-50%, -50%); clip-path: polygon(30% 0%, 70% 0%, 100% 50%, 70% 100%, 30% 100%, 0% 50%); }
+        .p3 { width: 60px; height: 60px; top: 40%; right: 22%; transform: translate(50%, -50%); clip-path: polygon(30% 0%, 70% 0%, 100% 50%, 70% 100%, 30% 100%, 0% 50%); }
+
+        .logo-text {
+            font-size: 60px;
+            font-weight: 900;
+            letter-spacing: 8px;
+            background: linear-gradient(135deg, #ffc107, #ffeb3b, #ffc107);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            animation: shimmer 3s linear infinite;
+            font-family: 'Impact', sans-serif;
+        }
+
+        @keyframes shimmer {
+            0% { background-position: 0% center; }
+            100% { background-position: 200% center; }
+        }
+
+        .loading-text {
+            margin-top: 30px;
+            color: #ffc107;
+            font-size: 16px;
+            animation: fadeIn 2s ease-in-out infinite;
+        }
+
+        @keyframes fadeIn {
+            0%, 100% { opacity: 0.5; }
+            50% { opacity: 1; }
+        }
+
+        /* Main App */
+        .main-app {
+            display: none;
+            background: linear-gradient(135deg, #0a1628 0%, #1a2942 100%);
+            height: 100vh;
+            overflow: hidden;
+            flex-direction: column;
+        }
+
+        .main-app.active {
+            display: flex;
+        }
+
+        /* Header */
+        .header {
+            background: linear-gradient(135deg, #0d1b2e 0%, #1a2d3f 100%);
+            padding: 15px 20px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+            border-bottom: 2px solid #ffc107;
+        }
+
+        .header-content {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .logo-small {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .mini-ball {
+            width: 35px;
+            height: 35px;
+            border-radius: 50%;
+            background: radial-gradient(circle at 30% 30%, #3d5a7f, #1a2938);
+            border: 2px solid #ffc107;
+            box-shadow: 0 0 20px rgba(255, 193, 7, 0.6);
+        }
+
+        .app-title {
+            font-size: 20px;
+            font-weight: 900;
+            background: linear-gradient(135deg, #ffc107, #ffeb3b);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .status-badge {
+            background: rgba(76, 175, 80, 0.2);
+            border: 1px solid #4caf50;
+            color: #4caf50;
+            padding: 5px 10px;
+            border-radius: 6px;
+            font-size: 12px;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        /* Action Buttons */
+        .action-section {
+            padding: 20px;
+            background: rgba(13, 27, 46, 0.6);
+            border-bottom: 1px solid rgba(255, 193, 7, 0.2);
+        }
+
+        .action-buttons {
+            display: flex;
+            gap: 15px;
+        }
+
+        .btn {
+            flex: 1;
+            padding: 15px;
+            border: none;
+            border-radius: 10px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #ffc107, #ffeb3b);
+            color: #0a1628;
+            box-shadow: 0 4px 15px rgba(255, 193, 7, 0.4);
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(255, 193, 7, 0.6);
+        }
+
+        .btn-secondary {
+            background: rgba(26, 45, 63, 0.8);
+            border: 2px solid rgba(255, 193, 7, 0.3);
+            color: #ffc107;
+        }
+
+        .btn-secondary:hover {
+            border-color: #ffc107;
+            background: rgba(255, 193, 7, 0.1);
+        }
+
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        /* Content Area */
+        .content {
+            flex: 1;
+            overflow-y: auto;
+            padding: 20px;
+        }
+
+        /* Match Card */
+        .match-card {
+            background: linear-gradient(135deg, rgba(26, 45, 63, 0.7), rgba(13, 27, 46, 0.7));
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 15px;
+            border: 2px solid rgba(255, 193, 7, 0.2);
+            border-left: 5px solid #ffc107;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.4);
+        }
+
+        .match-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 15px;
+        }
+
+        .match-info h3 {
+            font-size: 18px;
+            margin-bottom: 8px;
+        }
+
+        .match-meta {
+            display: flex;
+            gap: 10px;
+            font-size: 12px;
+            color: rgba(255, 193, 7, 0.8);
+        }
+
+        .prediction-box {
+            min-width: 220px;
+            background: rgba(13, 27, 46, 0.8);
+            border: 2px solid rgba(255, 193, 7, 0.3);
+            border-radius: 10px;
+            padding: 15px;
+        }
+
+        .prediction-box.has-prediction {
+            border-color: #4caf50;
+        }
+
+        .pred-label {
+            font-size: 11px;
+            color: rgba(255, 255, 255, 0.7);
+            margin-bottom: 8px;
+        }
+
+        .pred-options {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 10px;
+        }
+
+        .pred-btn {
+            flex: 1;
+            padding: 8px;
+            background: rgba(26, 45, 63, 0.8);
+            border: 2px solid rgba(255, 193, 7, 0.3);
+            border-radius: 6px;
+            color: rgba(255, 193, 7, 0.7);
+            font-size: 13px;
+            font-weight: bold;
+        }
+
+        .pred-btn.recommended {
+            background: linear-gradient(135deg, #ffc107, #ffeb3b);
+            border-color: #ffc107;
+            color: #0a1628;
+            animation: pulse 2s ease-in-out infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+        }
+
+        .confidence-badge {
+            background: rgba(76, 175, 80, 0.2);
+            border: 1px solid #4caf50;
+            color: #4caf50;
+            padding: 6px 12px;
+            border-radius: 6px;
+            font-size: 11px;
+            font-weight: bold;
+            text-align: center;
+        }
+
+        /* Loading State */
+        .loading-state {
+            text-align: center;
+            padding: 60px 20px;
+        }
+
+        .spinner {
+            border: 5px solid rgba(255, 193, 7, 0.2);
+            border-top: 5px solid #ffc107;
+            border-radius: 50%;
+            width: 60px;
+            height: 60px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 20px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: rgba(255, 193, 7, 0.7);
+        }
+
+        .empty-state-icon {
+            font-size: 60px;
+            margin-bottom: 20px;
+        }
+    </style>
+</head>
+<body>
+    <!-- Splash Screen -->
+    <div class="splash-screen" id="splashScreen">
+        <div class="football-container">
+            <div class="football">
+                <div class="football-sphere">
+                    <div class="panel p1">⬡</div>
+                    <div class="panel p2">◆</div>
+                    <div class="panel p3">▲</div>
+                </div>
+            </div>
+        </div>
+        <div class="logo-text">PREDICTAAI</div>
+        <div class="loading-text">Yükleniyor...</div>
+    </div>
+
+    <!-- Main App -->
+    <div class="main-app" id="mainApp">
+        <!-- Header -->
+        <div class="header">
+            <div class="header-content">
+                <div class="logo-small">
+                    <div class="mini-ball"></div>
+                    <div class="app-title">PREDICTAAI</div>
+                </div>
+                <div class="status-badge">
+                    <span>●</span>
+                    <span id="statusText">Hazır</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Action Buttons -->
+        <div class="action-section">
+            <div class="action-buttons">
+                <button class="btn btn-primary" id="fetchButton">
+                    📥 Maçları Çek
+                </button>
+                <button class="btn btn-secondary" id="predictButton" disabled>
+                    🎯 Tahmin Yap
+                </button>
+            </div>
+        </div>
+
+        <!-- Content -->
+        <div class="content" id="content">
+            <div class="empty-state">
+                <div class="empty-state-icon">⚽</div>
+                <h3>Maç bulunamadı</h3>
+                <p>Maçları görmek için "Maçları Çek" butonuna basın</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // API Configuration
+        const API_BASE_URL = 'http://localhost:8000';  // FastAPI server
+        
+        let matches = [];
+        let hasPredictions = false;
+        let datasetInfo = null;
+
+        // Initialize App
+        window.addEventListener('load', async () => {
+            // Check API status and dataset
+            try {
+                const response = await fetch(`${API_BASE_URL}/api/status`);
+                const status = await response.json();
+                
+                datasetInfo = {
+                    loaded: status.dataset_loaded,
+                    modelLoaded: status.model_loaded,
+                    predictorType: status.predictor_type,
+                    weightedSystem: status.weighted_system
+                };
+                
+                console.log('API Status:', status);
+            } catch (error) {
+                console.warn('Could not connect to API:', error);
+            }
+            
+            // Show splash screen for 3 seconds
+            setTimeout(() => {
+                document.getElementById('splashScreen').classList.add('hidden');
+                document.getElementById('mainApp').classList.add('active');
+                
+                // Show dataset info if available
+                if (datasetInfo && datasetInfo.loaded) {
+                    updateStatusBadge('Dataset yüklü ✅', 'success');
+                } else {
+                    updateStatusBadge('Dataset yüklenmedi ⚠️', 'warning');
+                }
+            }, 3000);
+        });
+
+        function updateStatusBadge(text, type = 'default') {
+            const statusBadge = document.querySelector('.status-badge');
+            const statusText = document.getElementById('statusText');
+            
+            statusText.textContent = text;
+            
+            if (type === 'success') {
+                statusBadge.style.borderColor = '#4caf50';
+                statusBadge.style.color = '#4caf50';
+                statusBadge.style.background = 'rgba(76, 175, 80, 0.2)';
+            } else if (type === 'warning') {
+                statusBadge.style.borderColor = '#ff9800';
+                statusBadge.style.color = '#ff9800';
+                statusBadge.style.background = 'rgba(255, 152, 0, 0.2)';
+            } else if (type === 'error') {
+                statusBadge.style.borderColor = '#f44336';
+                statusBadge.style.color = '#f44336';
+                statusBadge.style.background = 'rgba(244, 67, 54, 0.2)';
+            } else {
+                statusBadge.style.borderColor = '#ffc107';
+                statusBadge.style.color = '#ffc107';
+                statusBadge.style.background = 'rgba(255, 193, 7, 0.2)';
+            }
+        }
+
+        // Fetch Matches Button
+        document.getElementById('fetchButton').addEventListener('click', async () => {
+            const button = document.getElementById('fetchButton');
+            const content = document.getElementById('content');
+            
+            button.disabled = true;
+            button.innerHTML = '⏳ Çekiliyor...';
+            updateStatusBadge('Maçlar çekiliyor...', 'default');
+            
+            content.innerHTML = `
+                <div class="loading-state">
+                    <div class="spinner"></div>
+                    <p style="color: #ffc107;">Nesine API'den maçlar çekiliyor...</p>
+                    <p style="color: rgba(255,193,7,0.6); font-size: 12px; margin-top: 10px;">
+                        ${datasetInfo && datasetInfo.loaded ? '✅ Geçmiş ' + '100K+ maç verisi aktif' : '⚠️ Dataset yüklü değil'}
+                    </p>
+                </div>
+            `;
+
+            try {
+                // Fetch upcoming matches from API
+                const response = await fetch(`${API_BASE_URL}/api/matches/upcoming?force_refresh=true`);
+                const data = await response.json();
+
+                if (data.success && data.matches && data.matches.length > 0) {
+                    matches = data.matches;
+                    renderMatches(matches);
+                    
+                    button.innerHTML = '✅ Maçlar Yüklendi';
+                    document.getElementById('predictButton').disabled = false;
+                    updateStatusBadge(`${matches.length} maç yüklendi`, 'success');
+                    hasPredictions = false;
+                } else {
+                    throw new Error('Maç bulunamadı');
+                }
+            } catch (error) {
+                console.error('Error fetching matches:', error);
+                content.innerHTML = `
+                    <div class="empty-state">
+                        <div class="empty-state-icon">⚠️</div>
+                        <h3>Hata Oluştu</h3>
+                        <p>${error.message}</p>
+                        <p style="font-size: 12px; margin-top: 10px;">
+                            ✓ API sunucusunun çalıştığından emin olun<br>
+                            ✓ Komut: python main_weighted.py
+                        </p>
+                    </div>
+                `;
+                button.innerHTML = '📥 Maçları Çek';
+                updateStatusBadge('Hata', 'error');
+            } finally {
+                button.disabled = false;
+            }
+        });
+
+        // Predict Button
+        document.getElementById('predictButton').addEventListener('click', async () => {
+            const button = document.getElementById('predictButton');
+            
+            if (hasPredictions) {
+                // Clear predictions
+                hasPredictions = false;
+                renderMatches(matches);
+                button.innerHTML = '🎯 Tahmin Yap';
+                updateStatusBadge('Tahminler temizlendi', 'default');
+                return;
+            }
+            
+            button.disabled = true;
+            button.innerHTML = '⏳ Tahmin ediliyor...';
+            updateStatusBadge('AI modeli çalışıyor...', 'default');
+            
+            // Show loading state with dataset info
+            const content = document.getElementById('content');
+            const loadingHTML = `
+                <div class="loading-state">
+                    <div class="spinner"></div>
+                    <p style="color: #ffc107;">Weighted AI Model Çalışıyor...</p>
+                    <div style="margin-top: 20px; padding: 15px; background: rgba(26,45,63,0.6); border-radius: 10px; border: 1px solid rgba(255,193,7,0.3);">
+                        <div style="font-size: 14px; margin-bottom: 10px;">📊 Analiz Ediliyor:</div>
+                        <div style="font-size: 12px; color: rgba(255,193,7,0.8); line-height: 1.8;">
+                            ✓ Bahis Oranları (75% ağırlık)<br>
+                            ✓ H2H Geçmiş Maçlar (15% ağırlık)<br>
+                            ✓ Son Form Durumu (10% ağırlık)<br>
+                            ${datasetInfo && datasetInfo.loaded ? '✓ 100K+ geçmiş maç verisi kullanılıyor' : '⚠️ Sadece oran analizi'}
+                        </div>
+                    </div>
+                </div>
+            `;
+            content.innerHTML = loadingHTML;
+
+            try {
+                // Get predictions from API
+                const response = await fetch(`${API_BASE_URL}/api/matches/upcoming/predicted?force_refresh=false`);
+                const data = await response.json();
+
+                if (data.success && data.matches) {
+                    matches = data.matches;
+                    hasPredictions = true;
+                    
+                    // Calculate statistics
+                    const stats = calculatePredictionStats(matches);
+                    
+                    renderMatchesWithPredictions(matches, stats);
+                    
+                    button.innerHTML = '🗑️ Tahminleri Temizle';
+                    button.disabled = false;
+                    updateStatusBadge(`${matches.length} tahmin hazır`, 'success');
+                } else {
+                    throw new Error(data.message || 'Tahmin alınamadı');
+                }
+            } catch (error) {
+                console.error('Error predicting:', error);
+                
+                let errorMessage = error.message;
+                let instructions = '';
+                
+                if (error.message.includes('503') || error.message.includes('model')) {
+                    errorMessage = 'Model henüz eğitilmemiş!';
+                    instructions = `
+                        <div style="background: rgba(255,152,0,0.1); padding: 15px; border-radius: 8px; border: 1px solid rgba(255,152,0,0.3); margin-top: 15px;">
+                            <div style="font-size: 14px; margin-bottom: 10px;">⚙️ Model Eğitimi:</div>
+                            <div style="font-size: 12px; font-family: monospace; background: rgba(0,0,0,0.3); padding: 10px; border-radius: 5px;">
+                                python app/weighted_trainer.py
+                            </div>
+                            <div style="font-size: 11px; color: rgba(255,152,0,0.8); margin-top: 10px;">
+                                Model eğitimi CSV dosyanızı kullanarak yapılacak
+                            </div>
+                        </div>
+                    `;
+                }
+                
+                content.innerHTML = `
+                    <div class="empty-state">
+                        <div class="empty-state-icon">⚠️</div>
+                        <h3>Tahmin Hatası</h3>
+                        <p>${errorMessage}</p>
+                        ${instructions}
+                    </div>
+                `;
+                
+                button.innerHTML = '🎯 Tahmin Yap';
+                button.disabled = false;
+                updateStatusBadge('Hata', 'error');
+            }
+        });
+
+        // Calculate prediction statistics
+        function calculatePredictionStats(matchList) {
+            const stats = {
+                total: matchList.length,
+                highConfidence: 0,
+                mediumConfidence: 0,
+                lowConfidence: 0,
+                predictions: { '1': 0, 'X': 0, '2': 0 },
+                avgConfidence: 0
+            };
+            
+            let totalConf = 0;
+            
+            matchList.forEach(match => {
+                const pred = match.prediction;
+                if (!pred) return;
+                
+                const conf = pred.confidence || 0;
+                totalConf += conf;
+                
+                if (conf >= 0.8) stats.highConfidence++;
+                else if (conf >= 0.6) stats.mediumConfidence++;
+                else stats.lowConfidence++;
+                
+                if (pred.prediction) {
+                    stats.predictions[pred.prediction] = (stats.predictions[pred.prediction] || 0) + 1;
+                }
+            });
+            
+            stats.avgConfidence = totalConf / matchList.length;
+            
+            return stats;
+        }
+
+        // Render Matches
+        function renderMatches(matchList) {
+            const content = document.getElementById('content');
+            
+            if (!matchList || matchList.length === 0) {
+                content.innerHTML = `
+                    <div class="empty-state">
+                        <div class="empty-state-icon">⚽</div>
+                        <h3>Maç bulunamadı</h3>
+                        <p>Maçları görmek için "Maçları Çek" butonuna basın</p>
+                    </div>
+                `;
+                return;
+            }
+
+            const html = matchList.map(match => {
+                const odds = match.odds || match.odds_1x2 || {};
+                const odds1 = odds['1'] || odds.home || 0;
+                const oddsX = odds['X'] || odds.draw || 0;
+                const odds2 = odds['2'] || odds.away || 0;
+
+                return `
+                    <div class="match-card">
+                        <div class="match-header">
+                            <div class="match-info">
+                                <h3>${match.home_team} vs ${match.away_team}</h3>
+                                <div class="match-meta">
+                                    <span>🏆 ${match.league_name || 'Unknown'}</span>
+                                    <span>📅 ${new Date(match.date).toLocaleDateString('tr-TR')}</span>
+                                    <span>⏰ ${match.time || '--:--'}</span>
+                                </div>
+                            </div>
+                            <div class="prediction-box">
+                                <div class="pred-label">Bahis Oranları</div>
+                                <div class="pred-options">
+                                    <div class="pred-btn">1: ${odds1.toFixed(2)}</div>
+                                    <div class="pred-btn">X: ${oddsX.toFixed(2)}</div>
+                                    <div class="pred-btn">2: ${odds2.toFixed(2)}</div>
+                                </div>
+                                <div style="text-align: center; font-size: 11px; color: rgba(255,193,7,0.6);">
+                                    Tahmin için butona basın
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+
+            content.innerHTML = html;
+        }
+
+        // Render Matches with Predictions
+        function renderMatchesWithPredictions(matchList, stats) {
+            const content = document.getElementById('content');
+            
+            // Sort by confidence (highest first)
+            const sortedMatches = [...matchList].sort((a, b) => {
+                const confA = a.prediction?.confidence || 0;
+                const confB = b.prediction?.confidence || 0;
+                return confB - confA;
+            });
+
+            // Statistics header
+            const statsHTML = `
+                <div style="background: linear-gradient(135deg, rgba(26,45,63,0.8), rgba(13,27,46,0.8)); 
+                            border-radius: 12px; padding: 20px; margin-bottom: 20px; 
+                            border: 2px solid rgba(255,193,7,0.3);">
+                    <h3 style="margin-bottom: 15px; color: #ffc107;">📊 Tahmin İstatistikleri</h3>
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 15px;">
+                        <div style="text-align: center;">
+                            <div style="font-size: 24px; font-weight: bold; color: #ffc107;">${stats.total}</div>
+                            <div style="font-size: 11px; color: rgba(255,255,255,0.7);">Toplam Maç</div>
+                        </div>
+                        <div style="text-align: center;">
+                            <div style="font-size: 24px; font-weight: bold; color: #4caf50;">${stats.highConfidence}</div>
+                            <div style="font-size: 11px; color: rgba(255,255,255,0.7);">Yüksek Güven (80%+)</div>
+                        </div>
+                        <div style="text-align: center;">
+                            <div style="font-size: 24px; font-weight: bold; color: #ff9800;">${stats.mediumConfidence}</div>
+                            <div style="font-size: 11px; color: rgba(255,255,255,0.7);">Orta Güven (60-80%)</div>
+                        </div>
+                        <div style="text-align: center;">
+                            <div style="font-size: 24px; font-weight: bold; color: #ffc107;">${(stats.avgConfidence * 100).toFixed(0)}%</div>
+                            <div style="font-size: 11px; color: rgba(255,255,255,0.7);">Ort. Güven</div>
+                        </div>
+                    </div>
+                    <div style="margin-top: 15px; padding-top: 15px; border-top: 1px solid rgba(255,193,7,0.2);">
+                        <div style="display: flex; gap: 15px; justify-content: center; font-size: 12px;">
+                            <span style="color: rgba(255,255,255,0.7);">MS Tahminleri:</span>
+                            <span>1️⃣ ${stats.predictions['1'] || 0}</span>
+                            <span>❌ ${stats.predictions['X'] || 0}</span>
+                            <span>2️⃣ ${stats.predictions['2'] || 0}</span>
+                        </div>
+                    </div>
+                </div>
+            `;
+
+            const matchesHTML = sortedMatches.map(match => {
+                const pred = match.prediction || {};
+                const probs = pred.probabilities || {};
+                const odds = match.odds || match.odds_1x2 || {};
+                
+                const msClass1 = pred.prediction === '1' ? 'recommended' : '';
+                const msClass0 = pred.prediction === 'X' ? 'recommended' : '';
+                const msClass2 = pred.prediction === '2' ? 'recommended' : '';
+                
+                // Determine BTTS from probabilities
+                const bttsYes = (probs.home_win + probs.away_win) > 0.6 ? 'recommended' : '';
+                const bttsNo = (probs.home_win + probs.away_win) <= 0.6 ? 'recommended' : '';
+                
+                const confidence = ((pred.confidence || 0) * 100).toFixed(0);
+                const confidenceColor = confidence >= 80 ? '#4caf50' : confidence >= 60 ? '#ff9800' : '#f44336';
+
+                return `
+                    <div class="match-card">
+                        <div class="match-header">
+                            <div class="match-info">
+                                <h3>${match.home_team} vs ${match.away_team}</h3>
+                                <div class="match-meta">
+                                    <span>🏆 ${match.league_name || 'Unknown'}</span>
+                                    <span>📅 ${new Date(match.date).toLocaleDateString('tr-TR')}</span>
+                                    <span>⏰ ${match.time || '--:--'}</span>
+                                    <span style="background: rgba(102, 126, 234, 0.2); padding: 3px 8px; border-radius: 4px;">⚙️ WEIGHTED</span>
+                                </div>
+                            </div>
+                            <div class="prediction-box has-prediction">
+                                <div class="pred-label">⚽ Maç Sonucu</div>
+                                <div class="pred-options">
+                                    <div class="pred-btn ${msClass1}">1</div>
+                                    <div class="pred-btn ${msClass0}">X</div>
+                                    <div class="pred-btn ${msClass2}">2</div>
+                                </div>
+                                <div class="pred-label">🎯 Karşılıklı Gol</div>
+                                <div class="pred-options">
+                                    <div class="pred-btn ${bttsYes}">Var</div>
+                                    <div class="pred-btn ${bttsNo}">Yok</div>
+                                </div>
+                                <div class="confidence-badge" style="border-color: ${confidenceColor}; color: ${confidenceColor}; background: ${confidenceColor}20;">
+                                    Güven: ${confidence}%
+                                </div>
+                                <div style="text-align: center; font-size: 10px; color: rgba(255,193,7,0.6); margin-top: 8px;">
+                                    ${datasetInfo && datasetInfo.loaded ? 'H2H + Form + Odds' : 'Odds Only'}
+                                </div>
+                            </div>
+                        </div>
+                        <div style="margin-top: 15px; padding-top: 15px; border-top: 1px solid rgba(255,193,7,0.2); display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; font-size: 11px;">
+                            <div style="text-align: center;">
+                                <div style="color: rgba(255,255,255,0.5);">1 İht.</div>
+                                <div style="color: #ffc107; font-weight: bold;">${(probs.home_win * 100).toFixed(0)}%</div>
+                            </div>
+                            <div style="text-align: center;">
+                                <div style="color: rgba(255,255,255,0.5);">X İht.</div>
+                                <div style="color: #ffc107; font-weight: bold;">${(probs.draw * 100).toFixed(0)}%</div>
+                            </div>
+                            <div style="text-align: center;">
+                                <div style="color: rgba(255,255,255,0.5);">2 İht.</div>
+                                <div style="color: #ffc107; font-weight: bold;">${(probs.away_win * 100).toFixed(0)}%</div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+
+            content.innerHTML = statsHTML + matchesHTML;
+        }
+    </script>
+</body>
+</html>
