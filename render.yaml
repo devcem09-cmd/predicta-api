@@ -4,41 +4,13 @@ services:
     env: python
     region: frankfurt
     plan: free
-    
-    repo: https://github.com/devcem09-cmd/predicta-api
     branch: main
-    
-    # Build command - Install dependencies only
     buildCommand: |
-      echo "📦 Installing dependencies..."
-      pip install --upgrade pip
       pip install -r requirements.txt
-      echo "✅ Dependencies installed"
-    
-    # Start command - Train model if missing, then start API
-    startCommand: |
-      echo "🎯 Checking for model file..."
-      if [ ! -f "models/weighted_model.pkl" ]; then
-        echo "⚠️  Model not found, training now..."
-        echo "   This will take 2-5 minutes on first deploy"
-        mkdir -p models
-        python app/weighted_trainer.py || {
-          echo "❌ Model training failed"
-          echo "   Starting API in limited mode"
-        }
-      else
-        echo "✅ Model found, skipping training"
-      fi
-      echo "🌐 Starting API server..."
-      python main_weighted.py
-    
+      chmod +x start.sh
+    startCommand: bash start.sh
     envVars:
       - key: PYTHON_VERSION
-        value: 3.11.0
+        value: 3.11.9
       - key: PORT
         value: 8000
-      - key: LOG_LEVEL
-        value: info
-    
-    healthCheckPath: /api/status
-    autoDeploy: true
