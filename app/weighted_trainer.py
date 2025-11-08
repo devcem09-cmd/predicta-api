@@ -492,5 +492,29 @@ def train_model():
         return None
 
 
+def train_model():
+    """Main training function that can be called from other modules"""
+    print("🎯 Starting Weighted Model Training...")
+    
+    try:
+        # Directly call the main training function
+        success = train_weighted_model()
+        
+        if success:
+            print("✅ Training completed successfully")
+            # Return model path
+            model_path = Path(__file__).parent.parent / "models" / "weighted_model.pkl"
+            return str(model_path)
+        else:
+            print("❌ Training failed")
+            return None
+            
+    except Exception as e:
+        print(f"❌ Error in train_model: {e}")
+        import traceback
+        traceback.print_exc()
+        return None
+
+
 if __name__ == "__main__":
     train_model()
