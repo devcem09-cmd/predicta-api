@@ -1352,43 +1352,90 @@ def health_check():
 
 @app.on_event("startup")
 async def startup_event():
-    """Runs on API startup"""
+    """Runs on API startup with auto-training"""
+    global PREDICTOR, PREDICTOR_TYPE, WEIGHTED_AVAILABLE
+    
     print("=" * 60)
     print("🚀 Predicta API Starting...")
     print("=" * 60)
+    
+    model_path = BASE_DIR / "models" / "weighted_model.pkl"
+    
+    # Model yoksa veya bozuksa eğit
+    if not model_path.exists():
+        print("⚠️  No model found, training now...")
+        
+        if DATAFRAME is not None and len(DATAFRAME) > 0:
+            try:
+                print("📊 Training model with dataset...")
+                print(f"   Dataset size: {len(DATAFRAME)} matches")
+                
+                # Import and train
+                from app.weighted_trainer import train_model
+                
+                # Train the model
+                train_model()
+                
+                # Reload predictor
+                if model_path.exists():
+                    print("✅ Model trained successfully, loading...")
+                    PREDICTOR = WeightedPredictor(
+                        model_dir=BASE_DIR / "models",
+                        draw_threshold=0.30,
+                        enable_monitoring=True
+                    )
+                    PREDICTOR_TYPE = "weighted"
+                    WEIGHTED_AVAILABLE = True
+                    print("✅ Weighted predictor loaded")
+                else:
+                    print("⚠️  Training completed but model file not found")
+                    
+            except Exception as e:
+                print(f"❌ Training failed: {e}")
+                import traceback
+                traceback.print_exc()
+        else:
+            print("⚠️  No dataset available for training")
+    else:
+        # Try to load existing model
+        try:
+            import joblib
+            test = joblib.load(model_path)
+            print("✅ Existing model is valid")
+        except Exception as e:
+            print(f"❌ Model corrupted: {e}")
+            print("🔄 Deleting and retraining...")
+            model_path.unlink()
+            
+            # Train new model
+            if DATAFRAME is not None:
+                try:
+                    from app.weighted_trainer import train_model
+                    train_model()
+                    
+                    if model_path.exists():
+                        PREDICTOR = WeightedPredictor(
+                            model_dir=BASE_DIR / "models",
+                            draw_threshold=0.30,
+                            enable_monitoring=True
+                        )
+                        PREDICTOR_TYPE = "weighted"
+                        WEIGHTED_AVAILABLE = True
+                        print("✅ New model trained and loaded")
+                except Exception as train_err:
+                    print(f"❌ Retraining failed: {train_err}")
+    
     print(f"📁 Base Directory: {BASE_DIR}")
     print(f"🎯 Predictor Type: {PREDICTOR_TYPE.upper()}")
     print(f"⚖️  Weighted System: {'ENABLED' if WEIGHTED_AVAILABLE else 'DISABLED'}")
     print(f"🌐 Nesine Fetcher: {'ENABLED ✅' if NESINE_AVAILABLE else 'DISABLED ⚠️'}")
     print(f"🤖 Model Status: {'LOADED ✅' if PREDICTOR else 'NOT LOADED ⚠️'}")
-    print(f"🌐 Web UI: Available")
     print(f"📊 Dataset: {'Loaded' if DATAFRAME is not None else 'Not Loaded'}")
     
-    if not NESINE_AVAILABLE:
-        print(f"⚠️  WARNING: Nesine fetcher not available!")
-        print(f"   Using dummy test data instead of real matches")
-    
-    if "fallback" in PREDICTOR_TYPE:
-        print(f"⚠️  WARNING: Using fallback model!")
-        print(f"   Model quality: BASIC")
-    elif PREDICTOR_TYPE == "simple_odds":
-        print(f"⚠️  WARNING: Using simple odds-based prediction!")
-        print(f"   Model quality: MINIMAL")
-    elif PREDICTOR_TYPE == "no_model":
-        print(f"❌ ERROR: No predictor available!")
-        print(f"💡 Train a model:")
-        print(f"   Weighted: python app/weighted_trainer.py")
-        print(f"   Standard: python train_real_model.py")
-    elif PREDICTOR_TYPE == "weighted":
+    if PREDICTOR_TYPE == "weighted":
         print(f"📈 Feature Priorities: 75% Odds | 15% H2H | 10% Form")
-        print(f"✅ Model quality: PREMIUM")
-    elif PREDICTOR_TYPE == "standard" and PREDICTOR and hasattr(PREDICTOR, 'best_models_per_class'):
-        if PREDICTOR.best_models_per_class:
-            print(f"🧠 Smart Selection: ACTIVE")
-        print(f"✅ Model quality: STANDARD")
     
     print("=" * 60)
-
 
 if __name__ == "__main__":
     import uvicorn
