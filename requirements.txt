@@ -4,7 +4,7 @@
 # Python version: 3.11.x
 # Ensemble: XGBoost + LightGBM + CatBoost + RandomForest
 # ============================================================
-
+psutil
 # 🌐 Web Framework
 fastapi==0.104.1
 uvicorn==0.24.0
