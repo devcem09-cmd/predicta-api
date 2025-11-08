@@ -271,13 +271,14 @@
             border: 2px solid rgba(255, 193, 7, 0.3);
             border-radius: 10px;
             padding: 15px;
-            min-width: 250px;
+            min-width: 200px;
         }
 
         .prediction-label {
             font-size: 12px;
             color: rgba(255, 255, 255, 0.7);
             margin-bottom: 10px;
+            font-weight: 600;
         }
 
         .prediction-options {
@@ -315,7 +316,13 @@
             font-size: 12px;
             font-weight: bold;
             text-align: center;
-            margin-top: 10px;
+        }
+
+        .predictions-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 10px;
+            margin-top: 15px;
         }
 
         /* Match Details */
@@ -352,6 +359,7 @@
         .detail-value {
             color: #fff;
             font-weight: bold;
+            text-align: right;
         }
 
         /* Loading */
@@ -411,6 +419,10 @@
                 min-width: 100%;
             }
             
+            .predictions-grid {
+                grid-template-columns: 1fr;
+            }
+            
             .action-buttons {
                 flex-direction: column;
             }
@@ -418,6 +430,10 @@
             .action-btn {
                 width: 100%;
                 justify-content: center;
+            }
+            
+            .tab-nav {
+                overflow-x: scroll;
             }
         }
     </style>
@@ -471,6 +487,10 @@
         <button onclick="filterMatches('1')">🏠 Ev Sahibi</button>
         <button onclick="filterMatches('X')">🤝 Beraberlik</button>
         <button onclick="filterMatches('2')">✈️ Deplasman</button>
+        <button onclick="filterMatches('over')">📈 Üst 2.5</button>
+        <button onclick="filterMatches('under')">📉 Alt 2.5</button>
+        <button onclick="filterMatches('btts-yes')">🎯 KG Var</button>
+        <button onclick="filterMatches('btts-no')">🚫 KG Yok</button>
         <button onclick="filterMatches('high')">⭐ Yüksek Güven</button>
     </div>
 
@@ -504,7 +524,6 @@
             showLoading('API uyandırılıyor... Bu 30-60 saniye sürebilir.<br><small>Render free plan API\'yi 15 dakika sonra uyutur</small>');
             
             try {
-                // Root endpoint'e istek at
                 const response = await fetch(`${API_BASE_URL}/`, {
                     mode: 'cors',
                     headers: { 'Content-Type': 'application/json' }
@@ -540,7 +559,7 @@
                 showLoading(`Render API kontrol ediliyor... ${retryCount > 0 ? `(Deneme ${retryCount + 1}/${maxRetries + 1})` : ''}<br><small>API uyandırılıyor, lütfen bekleyin...</small>`);
                 
                 const controller = new AbortController();
-                const timeout = setTimeout(() => controller.abort(), 30000); // 30 saniye timeout
+                const timeout = setTimeout(() => controller.abort(), 30000);
                 
                 const response = await fetch(`${API_BASE_URL}/api/status`, {
                     signal: controller.signal,
@@ -564,7 +583,7 @@
                 
                 if (retryCount < maxRetries) {
                     showLoading(`⏳ API yanıt vermiyor, tekrar deneniyor... (${retryCount + 1}/${maxRetries})<br><small>Render free plan'da API uyuyorsa uyanması 30-60 saniye sürebilir</small>`);
-                    await new Promise(resolve => setTimeout(resolve, 5000)); // 5 saniye bekle
+                    await new Promise(resolve => setTimeout(resolve, 5000));
                     return checkApiStatus(retryCount + 1);
                 }
                 
@@ -656,7 +675,7 @@
             predictBtn.disabled = true;
             predictBtn.innerHTML = '⏳ Tahmin Ediliyor...';
             
-            showLoading('Weighted model ile tahminler yapılıyor...');
+            showLoading('Weighted model ile tahminler yapılıyor...<br><small>1X2 + Alt/Üst + KG Var/Yok</small>');
             
             predictions = {};
             let successCount = 0;
@@ -669,6 +688,7 @@
                     const controller = new AbortController();
                     const timeout = setTimeout(() => controller.abort(), 15000);
                     
+                    // Maç sonucu tahmini
                     const response = await fetch(`${API_BASE_URL}/api/predict/match`, {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
@@ -688,16 +708,80 @@
                     }
                     
                     const prediction = await response.json();
+                    
+                    // Alt/Üst tahmini ekle
+                    try {
+                        const ouController = new AbortController();
+                        const ouTimeout = setTimeout(() => ouController.abort(), 10000);
+                        
+                        const ouResponse = await fetch(`${API_BASE_URL}/api/predict/over-under`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                                home_team: match.home_team,
+                                away_team: match.away_team,
+                                odds: match.odds
+                            }),
+                            signal: ouController.signal,
+                            mode: 'cors'
+                        });
+                        
+                        clearTimeout(ouTimeout);
+                        
+                        if (ouResponse.ok) {
+                            const ouData = await ouResponse.json();
+                            prediction.over_under_prediction = ouData;
+                        }
+                    } catch (ouError) {
+                        console.log(`Alt/Üst tahmini yapılamadı: ${match.home_team} vs ${match.away_team}`);
+                    }
+                    
+                    // KG Var/Yok tahmini ekle
+                    try {
+                        const bttsController = new AbortController();
+                        const bttsTimeout = setTimeout(() => bttsController.abort(), 10000);
+                        
+                        const bttsResponse = await fetch(`${API_BASE_URL}/api/predict/btts`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                                home_team: match.home_team,
+                                away_team: match.away_team,
+                                odds: match.odds
+                            }),
+                            signal: bttsController.signal,
+                            mode: 'cors'
+                        });
+                        
+                        clearTimeout(bttsTimeout);
+                        
+                        if (bttsResponse.ok) {
+                            const bttsData = await bttsResponse.json();
+                            prediction.btts_prediction = bttsData;
+                        }
+                    } catch (bttsError) {
+                        console.log(`KG Var/Yok tahmini yapılamadı: ${match.home_team} vs ${match.away_team}`);
+                    }
+                    
                     predictions[match.match_id] = prediction;
                     successCount++;
                     
                     // Progress update
-                    showLoading(`Tahmin ediliyor: ${i + 1}/${allMatches.length}<br><small>Weighted System: 75% Odds | 15% H2H | 10% Form</small><br><small>✅ Başarılı: ${successCount} | ❌ Hata: ${errorCount}</small>`);
+                    showLoading(`
+                        Tahmin ediliyor: ${i + 1}/${allMatches.length}<br>
+                        <small>Weighted System: 75% Odds | 15% H2H | 10% Form</small><br>
+                        <small>✅ Başarılı: ${successCount} | ❌ Hata: ${errorCount}</small><br>
+                        <small>📊 1X2 + Alt/Üst + KG Var/Yok</small>
+                    `);
                     
                 } catch (error) {
                     console.error(`Prediction error for match ${match.match_id}:`, error);
                     errorCount++;
-                    showLoading(`Tahmin ediliyor: ${i + 1}/${allMatches.length}<br><small>⚠️ ${match.home_team} vs ${match.away_team} atlandı</small><br><small>✅ Başarılı: ${successCount} | ❌ Hata: ${errorCount}</small>`);
+                    showLoading(`
+                        Tahmin ediliyor: ${i + 1}/${allMatches.length}<br>
+                        <small>⚠️ ${match.home_team} vs ${match.away_team} atlandı</small><br>
+                        <small>✅ Başarılı: ${successCount} | ❌ Hata: ${errorCount}</small>
+                    `);
                 }
             }
             
@@ -710,7 +794,8 @@
             successDiv.innerHTML = `
                 ${errorCount > 0 ? '⚠️' : '✅'} ${successCount}/${allMatches.length} maç tahmin edildi!<br>
                 ${errorCount > 0 ? `<small>❌ ${errorCount} maçta hata oluştu</small><br>` : ''}
-                <small>Model: Weighted Ensemble (75% Odds, 15% H2H, 10% Form)</small>
+                <small>Model: Weighted Ensemble (75% Odds, 15% H2H, 10% Form)</small><br>
+                <small>📊 Tahminler: 1X2 + Alt/Üst 2.5 + KG Var/Yok</small>
             `;
             document.getElementById('match-container').insertBefore(successDiv, document.getElementById('match-container').firstChild);
             setTimeout(() => successDiv.remove(), 5000);
@@ -751,12 +836,16 @@
             const confidence = hasPrediction ? (prediction.confidence * 100).toFixed(0) : 0;
             const pred = hasPrediction ? prediction.prediction : '?';
             
-            // Map prediction to Turkish
+            // Map predictions to Turkish
             const predictionMap = {
                 '1': 'Ev Sahibi',
                 'X': 'Beraberlik',
                 '2': 'Deplasman'
             };
+            
+            // Over/Under ve BTTS tahminleri
+            const overUnder = prediction?.over_under_prediction || {};
+            const btts = prediction?.btts_prediction || {};
             
             card.innerHTML = `
                 <div class="match-header">
@@ -768,6 +857,8 @@
                             <span class="weighted-badge">⚙️ WEIGHTED</span>
                         </div>
                     </div>
+                    
+                    <!-- 1X2 Prediction -->
                     <div class="prediction-box">
                         <div class="prediction-label">⚽ Maç Sonucu</div>
                         <div class="prediction-options">
@@ -786,40 +877,133 @@
                 </div>
                 
                 ${hasPrediction ? `
+                    <!-- Additional Predictions Row -->
+                    <div class="predictions-grid">
+                        
+                        <!-- Over/Under 2.5 -->
+                        ${overUnder.prediction ? `
+                            <div class="prediction-box" style="min-width: auto;">
+                                <div class="prediction-label">📊 Alt/Üst 2.5</div>
+                                <div class="prediction-options">
+                                    <div class="prediction-btn ${overUnder.prediction === 'over' ? 'recommended' : ''}" 
+                                         style="flex: 1;">
+                                        ÜST
+                                    </div>
+                                    <div class="prediction-btn ${overUnder.prediction === 'under' ? 'recommended' : ''}" 
+                                         style="flex: 1;">
+                                        ALT
+                                    </div>
+                                </div>
+                                <div class="confidence-badge" style="margin-top: 8px; font-size: 11px;">
+                                    Güven: ${(overUnder.confidence * 100).toFixed(0)}%
+                                </div>
+                            </div>
+                        ` : ''}
+                        
+                        <!-- BTTS (Both Teams To Score) -->
+                        ${btts.prediction !== undefined ? `
+                            <div class="prediction-box" style="min-width: auto;">
+                                <div class="prediction-label">🎯 KG Var/Yok</div>
+                                <div class="prediction-options">
+                                    <div class="prediction-btn ${btts.prediction === true ? 'recommended' : ''}" 
+                                         style="flex: 1;">
+                                        VAR
+                                    </div>
+                                    <div class="prediction-btn ${btts.prediction === false ? 'recommended' : ''}" 
+                                         style="flex: 1;">
+                                        YOK
+                                    </div>
+                                </div>
+                                <div class="confidence-badge" style="margin-top: 8px; font-size: 11px;">
+                                    Güven: ${(btts.confidence * 100).toFixed(0)}%
+                                </div>
+                            </div>
+                        ` : ''}
+                        
+                    </div>
+                    
+                    <!-- Detailed Stats -->
                     <div class="match-details">
                         <div class="detail-row">
-                            <div class="detail-label">Tahmin</div>
+                            <div class="detail-label">🎯 Maç Sonucu Tahmini</div>
                             <div class="detail-value">${predictionMap[pred]} (${pred})</div>
                         </div>
                         <div class="detail-row">
-                            <div class="detail-label">Güven</div>
+                            <div class="detail-label">💪 Güven Seviyesi</div>
                             <div class="detail-value">${confidence}%</div>
                         </div>
                         <div class="detail-row">
-                            <div class="detail-label">Olasılıklar</div>
+                            <div class="detail-label">📊 Olasılıklar (1X2)</div>
                             <div class="detail-value">
                                 1: ${(prediction.probabilities.home_win * 100).toFixed(1)}% | 
                                 X: ${(prediction.probabilities.draw * 100).toFixed(1)}% | 
                                 2: ${(prediction.probabilities.away_win * 100).toFixed(1)}%
                             </div>
                         </div>
+                        
+                        ${overUnder.prediction ? `
+                            <div class="detail-row">
+                                <div class="detail-label">📈 Alt/Üst 2.5 Tahmini</div>
+                                <div class="detail-value">
+                                    ${overUnder.prediction === 'over' ? 'ÜST 2.5' : 'ALT 2.5'} 
+                                    (Güven: ${(overUnder.confidence * 100).toFixed(0)}%)
+                                </div>
+                            </div>
+                            ${overUnder.probabilities ? `
+                                <div class="detail-row">
+                                    <div class="detail-label">📊 Alt/Üst Olasılıklar</div>
+                                    <div class="detail-value">
+                                        Üst: ${(overUnder.probabilities.over * 100).toFixed(1)}% | 
+                                        Alt: ${(overUnder.probabilities.under * 100).toFixed(1)}%
+                                    </div>
+                                </div>
+                            ` : ''}
+                            ${overUnder.expected_goals !== undefined ? `
+                                <div class="detail-row">
+                                    <div class="detail-label">⚽ Beklenen Gol</div>
+                                    <div class="detail-value">${overUnder.expected_goals.toFixed(2)}</div>
+                                </div>
+                            ` : ''}
+                        ` : ''}
+                        
+                        ${btts.prediction !== undefined ? `
+                            <div class="detail-row">
+                                <div class="detail-label">🎯 KG Var/Yok Tahmini</div>
+                                <div class="detail-value">
+                                    ${btts.prediction ? 'İKİSİ DE GOL ATAR' : 'BİRİ GOL ATMAZ'} 
+                                    (Güven: ${(btts.confidence * 100).toFixed(0)}%)
+                                </div>
+                            </div>
+                            ${btts.probabilities ? `
+                                <div class="detail-row">
+                                    <div class="detail-label">📊 KG Olasılıklar</div>
+                                    <div class="detail-value">
+                                        Var: ${(btts.probabilities.yes * 100).toFixed(1)}% | 
+                                        Yok: ${(btts.probabilities.no * 100).toFixed(1)}%
+                                    </div>
+                                </div>
+                            ` : ''}
+                        ` : ''}
+                        
                         ${match.odds ? `
                             <div class="detail-row">
-                                <div class="detail-label">Bahis Oranları</div>
+                                <div class="detail-label">💰 Bahis Oranları</div>
                                 <div class="detail-value">
                                     1: ${match.odds['1']} | X: ${match.odds['X']} | 2: ${match.odds['2']}
                                 </div>
                             </div>
                         ` : ''}
+                        
                         ${prediction.odds_confidence ? `
                             <div class="detail-row">
-                                <div class="detail-label">Odds Güveni</div>
+                                <div class="detail-label">🎲 Odds Güveni</div>
                                 <div class="detail-value">${(prediction.odds_confidence * 100).toFixed(0)}%</div>
                             </div>
                         ` : ''}
+                        
                         ${prediction.feature_priorities ? `
                             <div class="detail-row">
-                                <div class="detail-label">Feature Priorities</div>
+                                <div class="detail-label">⚖️ Feature Ağırlıkları</div>
                                 <div class="detail-value">
                                     Odds: ${prediction.feature_priorities.odds} | 
                                     H2H: ${prediction.feature_priorities.h2h} | 
@@ -827,8 +1011,9 @@
                                 </div>
                             </div>
                         ` : ''}
+                        
                         <div class="detail-row">
-                            <div class="detail-label">Model</div>
+                            <div class="detail-label">🤖 Model</div>
                             <div class="detail-value">${prediction.model_type || 'weighted_ensemble'}</div>
                         </div>
                     </div>
@@ -861,15 +1046,63 @@
                     const prediction = predictions[match.match_id];
                     if (!prediction) return false;
                     
+                    // Yüksek güven filtresi
                     if (type === 'high') {
                         return prediction.confidence >= 0.7;
                     }
                     
-                    return prediction.prediction === type;
+                    // 1X2 filtreleri
+                    if (type === '1' || type === 'X' || type === '2') {
+                        return prediction.prediction === type;
+                    }
+                    
+                    // Alt/Üst filtreleri
+                    if (type === 'over') {
+                        return prediction.over_under_prediction?.prediction === 'over';
+                    }
+                    if (type === 'under') {
+                        return prediction.over_under_prediction?.prediction === 'under';
+                    }
+                    
+                    // KG Var/Yok filtreleri
+                    if (type === 'btts-yes') {
+                        return prediction.btts_prediction?.prediction === true;
+                    }
+                    if (type === 'btts-no') {
+                        return prediction.btts_prediction?.prediction === false;
+                    }
+                    
+                    return false;
                 });
             }
             
             displayMatches(filtered);
+            
+            // Sonuç sayısını göster
+            if (type !== 'all' && filtered.length < allMatches.length) {
+                const filterInfo = document.createElement('div');
+                filterInfo.className = 'alert-box warning';
+                filterInfo.style.marginBottom = '15px';
+                
+                const filterNames = {
+                    '1': 'Ev Sahibi Galibiyeti',
+                    'X': 'Beraberlik',
+                    '2': 'Deplasman Galibiyeti',
+                    'over': 'Üst 2.5',
+                    'under': 'Alt 2.5',
+                    'btts-yes': 'KG Var',
+                    'btts-no': 'KG Yok',
+                    'high': 'Yüksek Güven (≥70%)'
+                };
+                
+                filterInfo.innerHTML = `
+                    📊 <strong>${filterNames[type]}</strong> filtresi uygulandı<br>
+                    <small>${filtered.length}/${allMatches.length} maç gösteriliyor</small>
+                `;
+                
+                const container = document.getElementById('match-container');
+                container.insertBefore(filterInfo, container.firstChild);
+            }
         }
 
         function clearAll() {
@@ -934,7 +1167,7 @@
             if (!apiStatus) return;
             
             if (apiStatus.model_loaded) {
-                showStatus('active', 'Model Hazır ✓');
+                showStatus('active', 'Model Hazır ✔');
             } else {
                 showStatus('error', 'Model Yok');
             }
