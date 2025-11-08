@@ -1,33 +1,44 @@
 services:
-  - name: predicta-api
-    type: web
+  - type: web
+    name: predicta-api
     env: python
     region: frankfurt
     plan: free
+    
+    repo: https://github.com/devcem09-cmd/predicta-api
     branch: main
-    pythonVersion: 3.11
-
+    
+    # Build command - Install dependencies only
     buildCommand: |
-      pip install --upgrade pip wheel setuptools cython
-      pip install scikit-learn==1.5.2
+      echo "📦 Installing dependencies..."
+      pip install --upgrade pip
       pip install -r requirements.txt
-
-    # 🔹 DÜZELTME: main_weighted.py kök dizinde, web klasöründe değil
-    startCommand: uvicorn main_weighted:app --host 0.0.0.0 --port $PORT
-
+      echo "✅ Dependencies installed"
+    
+    # Start command - Train model if missing, then start API
+    startCommand: |
+      echo "🎯 Checking for model file..."
+      if [ ! -f "models/weighted_model.pkl" ]; then
+        echo "⚠️  Model not found, training now..."
+        echo "   This will take 2-5 minutes on first deploy"
+        mkdir -p models
+        python app/weighted_trainer.py || {
+          echo "❌ Model training failed"
+          echo "   Starting API in limited mode"
+        }
+      else
+        echo "✅ Model found, skipping training"
+      fi
+      echo "🌐 Starting API server..."
+      python main_weighted.py
+    
     envVars:
-      - key: PYTHONUNBUFFERED
-        value: "1"
-      - key: MODEL_PATH
-        value: models/weighted_model.pkl
-      - key: SCALER_PATH
-        value: models/weighted_scaler.pkl
-      - key: METADATA_PATH
-        value: models/weighted_model_metadata.json
-      - key: DATA_PATH
-        value: data/merged_all.csv
+      - key: PYTHON_VERSION
+        value: 3.11.0
       - key: PORT
         value: 8000
-
+      - key: LOG_LEVEL
+        value: info
+    
     healthCheckPath: /api/status
     autoDeploy: true
