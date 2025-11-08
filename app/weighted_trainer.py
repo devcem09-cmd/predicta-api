@@ -497,12 +497,12 @@ def train_model():
     print("🎯 Starting Weighted Model Training...")
     
     try:
-        # Directly call the main training function
+        # Ana eğitim fonksiyonunu direkt çağır
         success = train_weighted_model()
         
         if success:
             print("✅ Training completed successfully")
-            # Return model path
+            # Model path'i döndür
             model_path = Path(__file__).parent.parent / "models" / "weighted_model.pkl"
             return str(model_path)
         else:
