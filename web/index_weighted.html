@@ -60,26 +60,12 @@
             color: #f44336;
         }
 
-        .status-badge.warning {
-            background: rgba(255, 152, 0, 0.2);
-            border-color: #ff9800;
-            color: #ff9800;
-        }
-
         .status-icon {
             width: 8px;
             height: 8px;
             border-radius: 50%;
             background: #4caf50;
             animation: blink 2s ease-in-out infinite;
-        }
-
-        .status-icon.warning {
-            background: #ff9800;
-        }
-
-        .status-icon.error {
-            background: #f44336;
         }
 
         @keyframes blink {
@@ -182,14 +168,6 @@
             color: #ffc107;
         }
 
-        .action-btn.success {
-            background: linear-gradient(135deg, #4caf50, #45a049);
-        }
-
-        .action-btn.warning {
-            background: linear-gradient(135deg, #ff9800, #f57c00);
-        }
-
         /* Tab Navigation */
         .tab-nav {
             display: flex;
@@ -288,24 +266,6 @@
             box-shadow: 0 2px 10px rgba(102, 126, 234, 0.5);
         }
 
-        .fallback-badge {
-            background: linear-gradient(135deg, #ff9800, #f57c00);
-            color: #fff;
-            padding: 4px 10px;
-            border-radius: 12px;
-            font-size: 11px;
-            font-weight: bold;
-        }
-
-        .simple-badge {
-            background: linear-gradient(135deg, #9e9e9e, #757575);
-            color: #fff;
-            padding: 4px 10px;
-            border-radius: 12px;
-            font-size: 11px;
-            font-weight: bold;
-        }
-
         .prediction-box {
             background: rgba(13, 27, 46, 0.8);
             border: 2px solid rgba(255, 193, 7, 0.3);
@@ -350,18 +310,6 @@
             background: rgba(76, 175, 80, 0.2);
             border: 1px solid #4caf50;
             color: #4caf50;
-            padding: 6px 12px;
-            border-radius: 6px;
-            font-size: 12px;
-            font-weight: bold;
-            text-align: center;
-            margin-top: 10px;
-        }
-
-        .warning-badge {
-            background: rgba(255, 152, 0, 0.2);
-            border: 1px solid #ff9800;
-            color: #ff9800;
             padding: 6px 12px;
             border-radius: 6px;
             font-size: 12px;
@@ -453,28 +401,6 @@
             border-color: #4caf50;
         }
 
-        .alert-box.info {
-            background: rgba(33, 150, 243, 0.2);
-            border-color: #2196f3;
-        }
-
-        /* Model Quality Indicators */
-        .quality-premium {
-            border-left: 5px solid #4caf50;
-        }
-
-        .quality-standard {
-            border-left: 5px solid #2196f3;
-        }
-
-        .quality-basic {
-            border-left: 5px solid #ff9800;
-        }
-
-        .quality-minimal {
-            border-left: 5px solid #9e9e9e;
-        }
-
         /* Responsive */
         @media (max-width: 768px) {
             .match-header {
@@ -509,9 +435,6 @@
             <div class="status-badge" id="model-badge">
                 ⚙️ <span id="model-type">-</span>
             </div>
-            <div class="status-badge" id="quality-badge" style="display: none;">
-                🏆 <span id="quality-text">-</span>
-            </div>
         </div>
         <div class="top-bar-right" id="last-update">
             Son Güncelleme: -
@@ -529,7 +452,7 @@
     </div>
 
     <div class="action-buttons">
-        <button class="action-btn" id="wake-api-btn" onclick="wakeUpAPI()">
+        <button class="action-btn" id="wake-api-btn" onclick="wakeUpAPI()" style="background: linear-gradient(135deg, #4caf50, #45a049);">
             🔌 API'yi Uyandır
         </button>
         <button class="action-btn" id="fetch-matches-btn" onclick="fetchMatches()">
@@ -541,9 +464,6 @@
         <button class="action-btn secondary" onclick="clearAll()">
             🗑️ Temizle
         </button>
-        <button class="action-btn secondary" onclick="showApiInfo()">
-            ℹ️ API Bilgisi
-        </button>
     </div>
 
     <div class="tab-nav">
@@ -552,26 +472,20 @@
         <button onclick="filterMatches('X')">🤝 Beraberlik</button>
         <button onclick="filterMatches('2')">✈️ Deplasman</button>
         <button onclick="filterMatches('high')">⭐ Yüksek Güven</button>
-        <button onclick="filterMatches('premium')">🎯 Premium</button>
     </div>
 
     <div class="container" id="match-container">
         <div class="loading">
             <div class="spinner"></div>
-            <div class="loading-text">Railway API'ye bağlanılıyor...</div>
+            <div class="loading-text">Render API'ye bağlanılıyor...</div>
         </div>
     </div>
 
     <script>
         // ==========================================
-        // CONFIGURATION - DYNAMIC API URL
+        // CONFIGURATION - RENDER API
         // ==========================================
-        function getApiBaseUrl() {
-            // Railway'de aynı origin kullan
-            return window.location.origin;
-        }
-
-        const API_BASE_URL = getApiBaseUrl();
+        const API_BASE_URL = 'https://predicta-api.onrender.com';
         
         let allMatches = [];
         let predictions = {};
@@ -587,47 +501,46 @@
             wakeBtn.disabled = true;
             wakeBtn.innerHTML = '⏳ Uyandırılıyor...';
             
-            showLoading('Railway API kontrol ediliyor...<br><small>Railway otomatik scaling yapar, uyandırma gerekmez</small>');
+            showLoading('API uyandırılıyor... Bu 30-60 saniye sürebilir.<br><small>Render free plan API\'yi 15 dakika sonra uyutur</small>');
             
             try {
-                // Health check endpoint'e istek at
-                const response = await fetch(`${API_BASE_URL}/health`, {
+                // Root endpoint'e istek at
+                const response = await fetch(`${API_BASE_URL}/`, {
                     mode: 'cors',
                     headers: { 'Content-Type': 'application/json' }
                 });
                 
                 if (response.ok) {
-                    showLoading('Railway API hazır! Status kontrol ediliyor...');
+                    showLoading('API uyandı! Status kontrol ediliyor...');
                     await checkApiStatus();
                     wakeBtn.innerHTML = '✅ API Hazır';
-                    wakeBtn.classList.add('success');
+                    wakeBtn.style.background = 'linear-gradient(135deg, #4caf50, #45a049)';
                 } else {
                     throw new Error('API yanıt verdi ama hata döndü');
                 }
             } catch (error) {
                 showError(`
-                    ❌ API bağlantı hatası!<br><br>
+                    ❌ API uyandırılamadı!<br><br>
                     <strong>Hata:</strong> ${error.message}<br><br>
                     <strong>Yapılacaklar:</strong><br>
-                    1. Railway dashboard'u kontrol edin<br>
+                    1. Render dashboard'u kontrol edin<br>
                     2. API loglarına bakın<br>
                     3. Deploy durumunu kontrol edin<br><br>
                     <a href="${API_BASE_URL}" target="_blank" style="color: #ffc107;">API'yi tarayıcıda açın</a>
                 `);
-                wakeBtn.classList.add('warning');
             } finally {
                 wakeBtn.disabled = false;
-                wakeBtn.innerHTML = '🔌 API\'yi Kontrol Et';
+                wakeBtn.innerHTML = '🔌 API\'yi Uyandır';
             }
         }
         
         async function checkApiStatus(retryCount = 0) {
-            const maxRetries = 2; // Railway'de daha az retry
+            const maxRetries = 3;
             try {
-                showLoading(`Railway API kontrol ediliyor... ${retryCount > 0 ? `(Deneme ${retryCount + 1}/${maxRetries + 1})` : ''}`);
+                showLoading(`Render API kontrol ediliyor... ${retryCount > 0 ? `(Deneme ${retryCount + 1}/${maxRetries + 1})` : ''}<br><small>API uyandırılıyor, lütfen bekleyin...</small>`);
                 
                 const controller = new AbortController();
-                const timeout = setTimeout(() => controller.abort(), 15000); // 15 saniye timeout
+                const timeout = setTimeout(() => controller.abort(), 30000); // 30 saniye timeout
                 
                 const response = await fetch(`${API_BASE_URL}/api/status`, {
                     signal: controller.signal,
@@ -650,24 +563,24 @@
                 console.error('API Status Error:', error);
                 
                 if (retryCount < maxRetries) {
-                    showLoading(`⏳ API yanıt vermiyor, tekrar deneniyor... (${retryCount + 1}/${maxRetries})<br><small>Railway container başlatılıyor olabilir</small>`);
-                    await new Promise(resolve => setTimeout(resolve, 3000)); // 3 saniye bekle
+                    showLoading(`⏳ API yanıt vermiyor, tekrar deneniyor... (${retryCount + 1}/${maxRetries})<br><small>Render free plan'da API uyuyorsa uyanması 30-60 saniye sürebilir</small>`);
+                    await new Promise(resolve => setTimeout(resolve, 5000)); // 5 saniye bekle
                     return checkApiStatus(retryCount + 1);
                 }
                 
-                showStatus('error', 'API Bağlantısı Yok');
+                showStatus('error', 'Backend Bağlantısı Yok');
                 showError(`
-                    ❌ Railway API'ye bağlanılamadı!<br><br>
+                    ❌ Render API'ye bağlanılamadı!<br><br>
                     <strong>API URL:</strong> ${API_BASE_URL}<br>
                     <strong>Hata:</strong> ${error.message}<br><br>
                     <strong>Olası Nedenler:</strong><br>
-                    1. Container başlatılıyor (2-3 dakika sürebilir)<br>
-                    2. Build hatası olmuş olabilir<br>
-                    3. Port/config sorunu<br><br>
+                    1. API uyuyor (Render free plan 15 dk sonra uyur)<br>
+                    2. CORS hatası (Backend CORS ayarlarını kontrol edin)<br>
+                    3. API çalışmıyor (Render dashboard'u kontrol edin)<br><br>
                     <strong>Çözüm:</strong><br>
-                    • Railway dashboard'da deployment durumunu kontrol edin<br>
-                    • Logları inceleyin<br>
-                    • Birkaç dakika bekleyip tekrar deneyin<br><br>
+                    • Render dashboard'da API'yi kontrol edin<br>
+                    • 1-2 dakika bekleyip tekrar deneyin<br>
+                    • API loglarını kontrol edin<br><br>
                     <a href="${API_BASE_URL}" target="_blank" style="color: #ffc107;">API'yi yeni sekmede aç</a>
                 `);
                 return null;
@@ -675,11 +588,11 @@
         }
 
         async function fetchMatches() {
-            showLoading('Railway API\'den maçlar yükleniyor...');
+            showLoading('Render API\'den maçlar yükleniyor...');
             
             try {
                 const controller = new AbortController();
-                const timeout = setTimeout(() => controller.abort(), 20000);
+                const timeout = setTimeout(() => controller.abort(), 30000);
                 
                 const response = await fetch(`${API_BASE_URL}/api/matches/upcoming?force_refresh=true`, {
                     signal: controller.signal,
@@ -701,18 +614,9 @@
                     allMatches = data.matches;
                     updateMatchCount();
                     displayMatches(allMatches);
-                    
-                    // Predict butonunu duruma göre ayarla
-                    const predictBtn = document.getElementById('predict-all-btn');
-                    if (apiStatus && apiStatus.model_loaded) {
-                        predictBtn.disabled = false;
-                    } else {
-                        predictBtn.disabled = true;
-                        predictBtn.title = 'Model yüklenmedi - tahmin yapılamaz';
-                    }
-                    
+                    document.getElementById('predict-all-btn').disabled = false;
                     updateLastUpdate();
-                    showSuccess(`✅ ${allMatches.length} maç Railway API'den başarıyla yüklendi!`);
+                    showSuccess(`✅ ${allMatches.length} maç Render API'den başarıyla yüklendi!`);
                 } else {
                     showError('Maçlar yüklenemedi: ' + (data.error || 'Bilinmeyen hata'));
                 }
@@ -721,11 +625,11 @@
                 
                 let errorMsg = '';
                 if (error.name === 'AbortError') {
-                    errorMsg = 'İstek zaman aşımına uğradı (20 saniye). API yanıt vermiyor.';
+                    errorMsg = 'İstek zaman aşımına uğradı (30 saniye). API yanıt vermiyor.';
                 } else if (error.message.includes('CORS')) {
                     errorMsg = 'CORS hatası. Backend CORS ayarlarını kontrol edin.';
                 } else if (error.message.includes('Failed to fetch')) {
-                    errorMsg = 'API\'ye erişilemiyor. Container başlatılıyor olabilir.';
+                    errorMsg = 'API\'ye erişilemiyor. API uyuyor olabilir veya CORS sorunu var.';
                 } else {
                     errorMsg = error.message;
                 }
@@ -734,8 +638,8 @@
                     ❌ Maçlar yüklenirken hata oluştu!<br><br>
                     <strong>Hata:</strong> ${errorMsg}<br><br>
                     <strong>Çözüm:</strong><br>
-                    1. <a href="${API_BASE_URL}" target="_blank" style="color: #ffc107;">API'yi tarayıcıda açın</a><br>
-                    2. Birkaç dakika bekleyin<br>
+                    1. <a href="${API_BASE_URL}" target="_blank" style="color: #ffc107;">API'yi tarayıcıda açın</a> (uyandırır)<br>
+                    2. 30-60 saniye bekleyin<br>
                     3. Tekrar "Maçları Yükle" butonuna tıklayın<br><br>
                     <strong>API URL:</strong> ${API_BASE_URL}/api/matches/upcoming
                 `);
@@ -744,7 +648,7 @@
 
         async function predictAllMatches() {
             if (!apiStatus || !apiStatus.model_loaded) {
-                showError('Model yüklü değil. Lütfen önce modelin yüklenmesini bekleyin.');
+                showError('Model yüklü değil. Lütfen önce modeli eğitin veya API\'nin çalıştığından emin olun.');
                 return;
             }
 
@@ -752,16 +656,7 @@
             predictBtn.disabled = true;
             predictBtn.innerHTML = '⏳ Tahmin Ediliyor...';
             
-            // Model kalitesine göre mesaj
-            const modelQuality = apiStatus.model_quality || 'unknown';
-            const qualityMessages = {
-                'premium': 'Weighted model ile tahminler yapılıyor...',
-                'standard': 'Standart model ile tahminler yapılıyor...', 
-                'basic': 'Basit model ile tahminler yapılıyor...',
-                'minimal': 'Odds tabanlı tahminler yapılıyor...'
-            };
-            
-            showLoading(qualityMessages[modelQuality] || 'Tahminler yapılıyor...');
+            showLoading('Weighted model ile tahminler yapılıyor...');
             
             predictions = {};
             let successCount = 0;
@@ -772,7 +667,7 @@
                 
                 try {
                     const controller = new AbortController();
-                    const timeout = setTimeout(() => controller.abort(), 10000);
+                    const timeout = setTimeout(() => controller.abort(), 15000);
                     
                     const response = await fetch(`${API_BASE_URL}/api/predict/match`, {
                         method: 'POST',
@@ -797,11 +692,7 @@
                     successCount++;
                     
                     // Progress update
-                    const progressMsg = modelQuality === 'premium' ? 
-                        `Weighted System: 75% Odds | 15% H2H | 10% Form` :
-                        `Model Quality: ${modelQuality}`;
-                        
-                    showLoading(`Tahmin ediliyor: ${i + 1}/${allMatches.length}<br><small>${progressMsg}</small><br><small>✅ Başarılı: ${successCount} | ❌ Hata: ${errorCount}</small>`);
+                    showLoading(`Tahmin ediliyor: ${i + 1}/${allMatches.length}<br><small>Weighted System: 75% Odds | 15% H2H | 10% Form</small><br><small>✅ Başarılı: ${successCount} | ❌ Hata: ${errorCount}</small>`);
                     
                 } catch (error) {
                     console.error(`Prediction error for match ${match.match_id}:`, error);
@@ -816,15 +707,10 @@
             
             const successDiv = document.createElement('div');
             successDiv.className = errorCount > 0 ? 'alert-box warning' : 'alert-box success';
-            
-            const modelInfo = modelQuality === 'premium' ? 
-                'Model: Weighted Ensemble (75% Odds, 15% H2H, 10% Form)' :
-                `Model: ${apiStatus.predictor_type} (${modelQuality} quality)`;
-                
             successDiv.innerHTML = `
                 ${errorCount > 0 ? '⚠️' : '✅'} ${successCount}/${allMatches.length} maç tahmin edildi!<br>
                 ${errorCount > 0 ? `<small>❌ ${errorCount} maçta hata oluştu</small><br>` : ''}
-                <small>${modelInfo}</small>
+                <small>Model: Weighted Ensemble (75% Odds, 15% H2H, 10% Form)</small>
             `;
             document.getElementById('match-container').insertBefore(successDiv, document.getElementById('match-container').firstChild);
             setTimeout(() => successDiv.remove(), 5000);
@@ -859,12 +745,6 @@
         function createMatchCard(match, prediction) {
             const card = document.createElement('div');
             card.className = 'match-card';
-            
-            // Model kalitesine göre stil
-            if (apiStatus && apiStatus.model_quality) {
-                card.classList.add(`quality-${apiStatus.model_quality}`);
-            }
-            
             card.onclick = () => toggleDetails(card);
             
             const hasPrediction = prediction && prediction.prediction;
@@ -874,21 +754,9 @@
             // Map prediction to Turkish
             const predictionMap = {
                 '1': 'Ev Sahibi',
-                'X': 'Beraberlik', 
+                'X': 'Beraberlik',
                 '2': 'Deplasman'
             };
-            
-            // Model tipine göre badge
-            let modelBadge = '<span class="weighted-badge">⚙️ WEIGHTED</span>';
-            if (apiStatus) {
-                if (apiStatus.model_quality === 'premium') {
-                    modelBadge = '<span class="weighted-badge">🎯 PREMIUM</span>';
-                } else if (apiStatus.model_quality === 'basic') {
-                    modelBadge = '<span class="fallback-badge">⚠️ BASIC</span>';
-                } else if (apiStatus.model_quality === 'minimal') {
-                    modelBadge = '<span class="simple-badge">⚡ SIMPLE</span>';
-                }
-            }
             
             card.innerHTML = `
                 <div class="match-header">
@@ -897,7 +765,7 @@
                         <div class="match-meta">
                             <span>🏆 ${match.league_name || match.league_code}</span>
                             <span>📅 ${new Date(match.date).toLocaleDateString('tr-TR')}</span>
-                            ${modelBadge}
+                            <span class="weighted-badge">⚙️ WEIGHTED</span>
                         </div>
                     </div>
                     <div class="prediction-box">
@@ -908,7 +776,7 @@
                             <div class="prediction-btn ${pred === '2' ? 'recommended' : ''}">2</div>
                         </div>
                         ${hasPrediction ? `
-                            <div class="${confidence >= 70 ? 'confidence-badge' : 'warning-badge'}">Güven: ${confidence}%</div>
+                            <div class="confidence-badge">Güven: ${confidence}%</div>
                         ` : `
                             <div style="text-align: center; color: rgba(255,193,7,0.6); font-size: 12px; padding: 10px;">
                                 Tahmin bekleniyor...
@@ -930,9 +798,9 @@
                         <div class="detail-row">
                             <div class="detail-label">Olasılıklar</div>
                             <div class="detail-value">
-                                1: ${((prediction.probabilities.home_win || 0) * 100).toFixed(1)}% | 
-                                X: ${((prediction.probabilities.draw || 0) * 100).toFixed(1)}% | 
-                                2: ${((prediction.probabilities.away_win || 0) * 100).toFixed(1)}%
+                                1: ${(prediction.probabilities.home_win * 100).toFixed(1)}% | 
+                                X: ${(prediction.probabilities.draw * 100).toFixed(1)}% | 
+                                2: ${(prediction.probabilities.away_win * 100).toFixed(1)}%
                             </div>
                         </div>
                         ${match.odds ? `
@@ -951,21 +819,17 @@
                         ` : ''}
                         ${prediction.feature_priorities ? `
                             <div class="detail-row">
-                                <div class="detail-label">Özellik Öncelikleri</div>
+                                <div class="detail-label">Feature Priorities</div>
                                 <div class="detail-value">
-                                    Oranlar: ${prediction.feature_priorities.odds} | 
+                                    Odds: ${prediction.feature_priorities.odds} | 
                                     H2H: ${prediction.feature_priorities.h2h} | 
                                     Form: ${prediction.feature_priorities.form}
                                 </div>
                             </div>
                         ` : ''}
                         <div class="detail-row">
-                            <div class="detail-label">Model Tipi</div>
-                            <div class="detail-value">${prediction.predictor_type || apiStatus.predictor_type || 'unknown'}</div>
-                        </div>
-                        <div class="detail-row">
-                            <div class="detail-label">Model Kalitesi</div>
-                            <div class="detail-value" style="text-transform: capitalize;">${apiStatus.model_quality || 'unknown'}</div>
+                            <div class="detail-label">Model</div>
+                            <div class="detail-value">${prediction.model_type || 'weighted_ensemble'}</div>
                         </div>
                     </div>
                 ` : ''}
@@ -1001,10 +865,6 @@
                         return prediction.confidence >= 0.7;
                     }
                     
-                    if (type === 'premium') {
-                        return apiStatus && apiStatus.model_quality === 'premium';
-                    }
-                    
                     return prediction.prediction === type;
                 });
             }
@@ -1024,26 +884,6 @@
             `;
             updateMatchCount();
             document.getElementById('predict-all-btn').disabled = true;
-        }
-
-        function showApiInfo() {
-            const info = apiStatus ? `
-                <strong>API Bilgisi:</strong><br>
-                • Ortam: ${apiStatus.environment || 'unknown'}<br>
-                • Predictor: ${apiStatus.predictor_type}<br>
-                • Model Kalitesi: ${apiStatus.model_quality || 'unknown'}<br>
-                • Model Yüklü: ${apiStatus.model_loaded ? '✅' : '❌'}<br>
-                • Weighted System: ${apiStatus.weighted_system ? '✅' : '❌'}<br>
-                • Nesine Fetcher: ${apiStatus.nesine_fetcher ? '✅' : '❌'}<br>
-                • Dataset: ${apiStatus.dataset_loaded ? '✅' : '❌'}<br><br>
-                <small>URL: ${API_BASE_URL}</small>
-            ` : 'API status bilgisi yüklenmedi.';
-            
-            const alert = document.createElement('div');
-            alert.className = 'alert-box info';
-            alert.innerHTML = info;
-            document.getElementById('match-container').insertBefore(alert, document.getElementById('match-container').firstChild);
-            setTimeout(() => alert.remove(), 8000);
         }
 
         // ==========================================
@@ -1081,21 +921,11 @@
 
         function showStatus(type, text) {
             const badge = document.getElementById('api-status');
-            const statusIcon = badge.querySelector('.status-icon');
             const statusText = document.getElementById('status-text');
             
             badge.className = 'status-badge';
-            statusIcon.className = 'status-icon';
-            
-            if (type === 'active') {
-                badge.classList.add('active');
-            } else if (type === 'warning') {
-                badge.classList.add('warning');
-                statusIcon.classList.add('warning');
-            } else if (type === 'error') {
-                badge.classList.add('error');
-                statusIcon.classList.add('error');
-            }
+            if (type === 'active') badge.classList.add('active');
+            if (type === 'error') badge.classList.add('error');
             
             statusText.textContent = text;
         }
@@ -1103,47 +933,14 @@
         function updateStatusBar() {
             if (!apiStatus) return;
             
-            // API status
-            if (apiStatus.status === 'running') {
-                if (apiStatus.model_loaded) {
-                    showStatus('active', 'Model Hazır ✓');
-                } else {
-                    showStatus('warning', 'Model Yok ⚠️');
-                }
+            if (apiStatus.model_loaded) {
+                showStatus('active', 'Model Hazır ✓');
             } else {
-                showStatus('error', 'API Çalışmıyor');
+                showStatus('error', 'Model Yok');
             }
             
-            // Model type
             document.getElementById('model-type').textContent = 
                 apiStatus.predictor_type.toUpperCase();
-            
-            // Model quality
-            const qualityBadge = document.getElementById('quality-badge');
-            const qualityText = document.getElementById('quality-text');
-            
-            if (apiStatus.model_quality) {
-                qualityBadge.style.display = 'flex';
-                const qualityMap = {
-                    'premium': 'Premium',
-                    'standard': 'Standard', 
-                    'basic': 'Basic',
-                    'minimal': 'Minimal'
-                };
-                qualityText.textContent = qualityMap[apiStatus.model_quality] || apiStatus.model_quality;
-                
-                // Quality badge rengi
-                qualityBadge.className = 'status-badge';
-                if (apiStatus.model_quality === 'premium') {
-                    qualityBadge.classList.add('active');
-                } else if (apiStatus.model_quality === 'basic') {
-                    qualityBadge.classList.add('warning');
-                } else if (apiStatus.model_quality === 'minimal') {
-                    qualityBadge.classList.add('error');
-                }
-            } else {
-                qualityBadge.style.display = 'none';
-            }
         }
 
         function updateMatchCount() {
@@ -1161,32 +958,20 @@
         // ==========================================
         
         window.addEventListener('DOMContentLoaded', async () => {
-            // Sayfa yüklendiğinde otomatik status kontrol et
             await checkApiStatus();
             
             if (apiStatus && apiStatus.status === 'running') {
                 const container = document.getElementById('match-container');
-                let message = `✅ Railway API bağlantısı başarılı!<br>
-                    <small>API: ${API_BASE_URL}</small><br>
-                    <small>Model: ${apiStatus.predictor_type.toUpperCase()} `;
-                
-                if (apiStatus.model_quality) {
-                    message += `(${apiStatus.model_quality} quality)`;
-                }
-                
-                message += `</small><br><br>
-                    "Maçları Yükle" butonuna tıklayarak maçları görebilirsiniz.`;
-                
                 container.innerHTML = `
                     <div class="alert-box success">
-                        ${message}
+                        ✅ Render API bağlantısı başarılı!<br>
+                        <small>API: ${API_BASE_URL}</small><br>
+                        <small>Model: ${apiStatus.predictor_type.toUpperCase()} ${apiStatus.weighted_system ? '(Weighted System)' : ''}</small><br><br>
+                        "Maçları Yükle" butonuna tıklayarak maçları görebilirsiniz.
                     </div>
                 `;
             }
         });
-
-        // API URL'yi sayfa başlığına ekle (debug için)
-        document.title += ` | ${API_BASE_URL}`;
     </script>
 </body>
 </html>
