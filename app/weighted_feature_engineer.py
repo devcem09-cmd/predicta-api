@@ -282,119 +282,126 @@ class WeightedFeatureEngineer:
     # ============================================================
     
     def _extract_h2h_features(self, home_team: str, away_team: str, 
-                              current_idx: int = None) -> Dict[str, float]:
-        """
-        HEAD-TO-HEAD ÖZELLİKLERİ
-        
-        Geçmiş karşılaşma verileri:
-        - Son 10 maç istatistikleri
-        - Kazanma oranları
-        - Gol ortalamaları
-        - Beraberlik eğilimi
-        """
-        pair_key = tuple(sorted([str(home_team), str(away_team)]))
-        h2h_indices = self.h2h_idx.get(pair_key, [])
-        
-        if current_idx is not None:
-            h2h_indices = [i for i in h2h_indices if i < current_idx]
-        
-        # Son 10 maç
-        h2h_indices = h2h_indices[-10:]
-        
-        if not h2h_indices:
-            return {
-                'h2h_matches': 0,
-                'h2h_home_win_rate': 0.40,
-                'h2h_draw_rate': 0.27,
-                'h2h_away_win_rate': 0.33,
-                'h2h_avg_home_goals': 1.3,
-                'h2h_avg_away_goals': 1.1,
-                'h2h_avg_total_goals': 2.4,
-                'h2h_high_scoring': 0.0,
-                'h2h_draw_tendency': 0.0,
-            }
-        
-        indices = np.array(h2h_indices)
-        home_is_home = self.home_teams[indices] == home_team
-        
-        home_goals = np.where(home_is_home, self.home_scores[indices], self.away_scores[indices])
-        away_goals = np.where(home_is_home, self.away_scores[indices], self.home_scores[indices])
-        
-        results = self.results[indices]
-        home_wins = np.sum(np.where(home_is_home, results == '1', results == '2'))
-        draws = np.sum(results == 'X')
-        away_wins = np.sum(np.where(home_is_home, results == '2', results == '1'))
-        
-        total = len(indices)
-        avg_total = float(np.mean(home_goals + away_goals))
-        
+                          current_idx: int = None) -> Dict[str, float]:
+    """
+    HEAD-TO-HEAD ÖZELLİKLERİ
+    
+    Geçmiş karşılaşma verileri:
+    - Son 10 maç istatistikleri
+    - Kazanma oranları
+    - Gol ortalamaları
+    - Beraberlik eğilimi
+    """
+    pair_key = tuple(sorted([str(home_team), str(away_team)]))
+    h2h_indices = self.h2h_idx.get(pair_key, [])
+    
+    # ✅ FIX: current_idx None ise tüm maçları al
+    if current_idx is not None:
+        h2h_indices = [i for i in h2h_indices if i < current_idx]
+    
+    # Son 10 maç
+    h2h_indices = h2h_indices[-10:]
+    
+    if not h2h_indices:
         return {
-            'h2h_matches': total,
-            'h2h_home_win_rate': float(home_wins / total),
-            'h2h_draw_rate': float(draws / total),
-            'h2h_away_win_rate': float(away_wins / total),
-            'h2h_avg_home_goals': float(np.mean(home_goals)),
-            'h2h_avg_away_goals': float(np.mean(away_goals)),
-            'h2h_avg_total_goals': avg_total,
-            'h2h_high_scoring': 1.0 if avg_total > 3.0 else 0.0,
-            'h2h_draw_tendency': 1.0 if (draws / total) > 0.35 else 0.0,
+            'h2h_matches': 0,
+            'h2h_home_win_rate': 0.40,
+            'h2h_draw_rate': 0.27,
+            'h2h_away_win_rate': 0.33,
+            'h2h_avg_home_goals': 1.3,
+            'h2h_avg_away_goals': 1.1,
+            'h2h_avg_total_goals': 2.4,
+            'h2h_high_scoring': 0.0,
+            'h2h_draw_tendency': 0.0,
         }
-
+    
+    indices = np.array(h2h_indices)
+    home_is_home = self.home_teams[indices] == home_team
+    
+    home_goals = np.where(home_is_home, self.home_scores[indices], self.away_scores[indices])
+    away_goals = np.where(home_is_home, self.away_scores[indices], self.home_scores[indices])
+    
+    results = self.results[indices]
+    home_wins = np.sum(np.where(home_is_home, results == '1', results == '2'))
+    draws = np.sum(results == 'X')
+    away_wins = np.sum(np.where(home_is_home, results == '2', results == '1'))
+    
+    total = len(indices)
+    avg_total = float(np.mean(home_goals + away_goals))
+    
+    return {
+        'h2h_matches': total,
+        'h2h_home_win_rate': float(home_wins / total),
+        'h2h_draw_rate': float(draws / total),
+        'h2h_away_win_rate': float(away_wins / total),
+        'h2h_avg_home_goals': float(np.mean(home_goals)),
+        'h2h_avg_away_goals': float(np.mean(away_goals)),
+        'h2h_avg_total_goals': avg_total,
+        'h2h_high_scoring': 1.0 if avg_total > 3.0 else 0.0,
+        'h2h_draw_tendency': 1.0 if (draws / total) > 0.35 else 0.0,
+    }
     # ============================================================
     # FORM ÖZELLİKLERİ (%10 AĞIRLIK)
     # ============================================================
     
     def _extract_form_features(self, team: str, current_idx: int = None, 
-                               is_home: bool = True) -> Dict[str, float]:
-        """
-        SON FORM ÖZELLİKLERİ
-        
-        Son 5 maçtaki performans:
-        - Puan ortalaması
-        - Galibiyet oranı
-        - Gol performansı
-        """
-        if is_home:
-            all_indices = self.home_matches_idx.get(team, [])
-            indices = [i for i in all_indices if i < current_idx]
-            indices = indices[-5:]  # Son 5 maç
-        else:
-            all_indices = self.away_matches_idx.get(team, [])
-            indices = [i for i in all_indices if i < current_idx]
-            indices = indices[-5:]
-        
-        if not indices:
-            return {
-                'form_win_rate': 0.40,
-                'form_points_per_game': 1.2,
-                'form_avg_goals_scored': 1.2,
-                'form_avg_goals_conceded': 1.2,
-                'form_momentum': 0.5,
-            }
-        
-        indices = np.array(indices)
-        
-        goals_scored = self.home_scores[indices] if is_home else self.away_scores[indices]
-        goals_conceded = self.away_scores[indices] if is_home else self.home_scores[indices]
-        
-        results = self.results[indices]
-        wins = np.sum(results == ('1' if is_home else '2'))
-        draws = np.sum(results == 'X')
-        points = wins * 3 + draws
-        
-        # Momentum (son maçların ağırlıklı ortalaması)
-        weights = np.array([0.10, 0.15, 0.20, 0.25, 0.30])  # Son maça daha fazla ağırlık
-        match_points = np.where(results == ('1' if is_home else '2'), 3, 
-                                np.where(results == 'X', 1, 0))
-        momentum = np.sum(match_points * weights) / 3.0  # Normalize to 0-1
-        
+                           is_home: bool = True) -> Dict[str, float]:
+    """
+    SON FORM ÖZELLİKLERİ
+    
+    Son 5 maçtaki performans:
+    - Puan ortalaması
+    - Galibiyet oranı
+    - Gol performansı
+    """
+    if is_home:
+        all_indices = self.home_matches_idx.get(team, [])
+    else:
+        all_indices = self.away_matches_idx.get(team, [])
+    
+    # ✅ FIX: current_idx None ise tüm maçları al
+    if current_idx is not None:
+        indices = [i for i in all_indices if i < current_idx]
+    else:
+        indices = all_indices.copy()
+    
+    # Son 5 maç
+    indices = indices[-5:]
+    
+    if not indices:
         return {
-            'form_win_rate': float(wins / len(indices)),
-            'form_points_per_game': float(points / len(indices)),
-            'form_avg_goals_scored': float(np.mean(goals_scored)),
-            'form_avg_goals_conceded': float(np.mean(goals_conceded)),
-            'form_momentum': float(momentum),
+            'form_win_rate': 0.40,
+            'form_points_per_game': 1.2,
+            'form_avg_goals_scored': 1.2,
+            'form_avg_goals_conceded': 1.2,
+            'form_momentum': 0.5,
         }
+    
+    indices = np.array(indices)
+    
+    goals_scored = self.home_scores[indices] if is_home else self.away_scores[indices]
+    goals_conceded = self.away_scores[indices] if is_home else self.home_scores[indices]
+    
+    results = self.results[indices]
+    wins = np.sum(results == ('1' if is_home else '2'))
+    draws = np.sum(results == 'X')
+    points = wins * 3 + draws
+    
+    # Momentum (son maçların ağırlıklı ortalaması)
+    weights = np.array([0.10, 0.15, 0.20, 0.25, 0.30])[:len(indices)]  # Son maça daha fazla ağırlık
+    weights = weights / weights.sum()  # Normalize
+    
+    match_points = np.where(results == ('1' if is_home else '2'), 3, 
+                            np.where(results == 'X', 1, 0))
+    momentum = np.sum(match_points * weights) / 3.0  # Normalize to 0-1
+    
+    return {
+        'form_win_rate': float(wins / len(indices)),
+        'form_points_per_game': float(points / len(indices)),
+        'form_avg_goals_scored': float(np.mean(goals_scored)),
+        'form_avg_goals_conceded': float(np.mean(goals_conceded)),
+        'form_momentum': float(momentum),
+    }
 
     # ============================================================
     # ANA FEATURE EXTRACTION
