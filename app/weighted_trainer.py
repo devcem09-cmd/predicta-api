@@ -468,5 +468,24 @@ def train_weighted_model(test_size=0.2, cv_folds=5):
         traceback.print_exc()
         return False
 
+def train_model():
+    """Main training function that can be called from other modules"""
+    print("🎯 Starting Weighted Model Training...")
+    
+    # Your existing training code here
+    # ...
+    
+    # Save with protocol=4
+    joblib.dump(
+        model_data,
+        model_path,
+        compress=3,
+        protocol=4  # Python 3.11 compatible
+    )
+    
+    print("✅ Training completed")
+    return model_path
+
+
 if __name__ == "__main__":
-    train_weighted_model()
+    train_model()
