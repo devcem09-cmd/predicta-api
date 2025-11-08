@@ -8,6 +8,43 @@ APP_DIR = BASE_DIR / "app"
 if str(BASE_DIR) not in sys.path: sys.path.insert(0, str(BASE_DIR))
 if str(APP_DIR) not in sys.path: sys.path.insert(0, str(APP_DIR))
 
+# ---------- MODEL INITIALIZATION ----------
+def initialize_model():
+    """Modeli kontrol et, yoksa otomatik eğit"""
+    print("🔍 Checking model availability...")
+    
+    model_path = BASE_DIR / "models" / "weighted_model.pkl"
+    scaler_path = BASE_DIR / "models" / "weighted_scaler.pkl"
+    
+    # Models klasörünü oluştur
+    (BASE_DIR / "models").mkdir(exist_ok=True)
+    
+    if model_path.exists() and scaler_path.exists():
+        print("✅ Model files found")
+        return True
+    else:
+        print("🤖 Model not found. Starting automatic training...")
+        try:
+            from app.weighted_trainer import train_weighted_model
+            print("🏋️ Starting model training...")
+            success = train_weighted_model()
+            
+            if success and model_path.exists():
+                print("🎉 Model trained successfully!")
+                return True
+            else:
+                print("❌ Model training completed but files not found")
+                return False
+                
+        except Exception as e:
+            print(f"💥 Model training failed: {e}")
+            import traceback
+            traceback.print_exc()
+            return False
+
+# Modeli başlangıçta yükle
+MODEL_READY = initialize_model()
+
 # ---------- FastAPI ----------
 from fastapi import FastAPI, Query
 from fastapi.responses import JSONResponse
@@ -39,8 +76,14 @@ PREDICTOR_TYPE = "none"
 try:
     from app.weighted_predictor import WeightedPredictor
     from app.weighted_feature_engineer import WeightedFeatureEngineer
-    WEIGHTED_AVAILABLE = True
-    print("✅ Weighted Prediction System loaded")
+    
+    if MODEL_READY:
+        WEIGHTED_AVAILABLE = True
+        print("✅ Weighted Prediction System loaded")
+    else:
+        print("⚠️  Weighted system available but model not ready")
+        WEIGHTED_AVAILABLE = False
+        
 except ImportError as e:
     print(f"⚠️  Weighted system import failed: {e}")
     WEIGHTED_AVAILABLE = False
@@ -53,6 +96,40 @@ try:
 except ImportError as e:
     print(f"⚠️  Standard system import failed: {e}")
 
+# ---------- FastAPI App Creation ----------
+app = FastAPI(title="Predicta Weighted API", version="2.0")
+
+# CORS middleware
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+# Static files
+app.mount("/static", StaticFiles(directory=BASE_DIR / "web"), name="static")
+
+# ---------- API Routes ----------
+@app.get("/")
+async def root():
+    return {
+        "message": "Predicta Weighted API", 
+        "version": "2.0",
+        "model_ready": MODEL_READY,
+        "weighted_system": WEIGHTED_AVAILABLE,
+        "nesine_available": NESINE_AVAILABLE
+    }
+
+@app.get("/health")
+async def health_check():
+    """Health check endpoint for Render"""
+    return {
+        "status": "healthy" if MODEL_READY else "model_missing",
+        "timestamp": datetime.now().isoformat(),
+        "model_ready": MODEL_READY
+    }
 
 # ---------- Lightweight live FE ----------
 class LiveFeatureEngineer:
@@ -683,12 +760,9 @@ async def startup_event():
 
 
 if __name__ == "__main__":
-    import uvicorn, os
-    port = int(os.environ.get("PORT", 8000))
-    uvicorn.run(
-        "main_weighted:app", 
-        host="0.0.0.0", 
-        port=port,
-        reload=False,
-        log_level="info"
-    )
+    import uvicorn
+    print(f"🎯 Starting Predicta Weighted API...")
+    print(f"📊 Model Status: {'READY' if MODEL_READY else 'NOT READY'}")
+    print(f"⚖️ Weighted System: {'AVAILABLE' if WEIGHTED_AVAILABLE else 'UNAVAILABLE'}")
+    
+    uvicorn.run(app, host="0.0.0.0", port=8000)
