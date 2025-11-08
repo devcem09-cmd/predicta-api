@@ -472,20 +472,17 @@ def train_model():
     """Main training function that can be called from other modules"""
     print("🎯 Starting Weighted Model Training...")
     
-    # Your existing training code here
-    # ...
+    # Ana eğitim fonksiyonunu çağır
+    success = train_weighted_model()
     
-    # Save with protocol=4
-    joblib.dump(
-        model_data,
-        model_path,
-        compress=3,
-        protocol=4  # Python 3.11 compatible
-    )
-    
-    print("✅ Training completed")
-    return model_path
-
+    if success:
+        print("✅ Training completed successfully")
+        # Eğer model path döndürmeniz gerekiyorsa:
+        model_path = Path(__file__).parent.parent / "models" / "weighted_model.pkl"
+        return model_path
+    else:
+        print("❌ Training failed")
+        return None
 
 if __name__ == "__main__":
     train_model()
