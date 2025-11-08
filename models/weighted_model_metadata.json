@@ -1,10 +1,18 @@
 {
-  "training_date": "2025-10-30T12:01:54.294476",
-  "model_type": "weighted_ensemble",
+  "training_date": "2025-11-09T00:57:11.048510",
+  "model_type": "weighted_lightgbm_optimized",
   "feature_weights": {
     "odds": 0.75,
     "h2h": 0.15,
     "form": 0.1
+  },
+  "size_config": {
+    "max_depth": 5,
+    "n_estimators": 200,
+    "max_leaves": 31,
+    "subsample": 0.7,
+    "colsample_bytree": 0.7,
+    "use_best_model_only": true
   },
   "n_features": 41,
   "feature_names": [
@@ -50,64 +58,32 @@
     "odds_h2h_alignment",
     "odds_form_agreement"
   ],
-  "training_samples": 84377,
-  "test_samples": 21095,
+  "training_samples": 92264,
+  "test_samples": 23066,
   "class_weights": {
     "0": 1.0,
     "1": 1.5,
     "2": 1.0
   },
-  "ensemble_weights": {
-    "xgboost": 0.23792142072295785,
-    "lightgbm": 0.258849018890655,
-    "catboost": 0.2582029520256515,
-    "random_forest": 0.24502660836073573
-  },
-  "test_accuracy": 0.7148139369518843,
-  "test_logloss": 0.6406472775206697,
-  "draw_recall": 0.6568569746909947,
-  "draw_precision": 0.6057535733671069,
+  "test_accuracy": 0.6142374057053672,
+  "test_logloss": 0.8313200025918523,
+  "draw_recall": 0.42841328413284135,
+  "draw_precision": 0.48506371422602884,
+  "model_size_mb": 0.7723579406738281,
+  "scaler_size_mb": 0.0013456344604492188,
+  "total_size_mb": 0.7737035751342773,
   "individual_scores": {
     "xgboost": {
-      "train_accuracy": 0.7653388956706212,
-      "test_accuracy": 0.7198862289642095,
-      "train_logloss": 0.5345596756237315,
-      "test_logloss": 0.6324778760214507,
-      "draw_accuracy": 0.5738669805768098,
-      "cv_mean": 0.7204214310921493,
-      "cv_std": 0.0014501569509451217
+      "test_accuracy": 0.6164484522674065,
+      "test_logloss": 0.8216762635179734,
+      "draw_accuracy": 0.21955719557195572,
+      "model_size_mb": 0.5353250503540039
     },
     "lightgbm": {
-      "train_accuracy": 0.7524088317906539,
-      "test_accuracy": 0.712633325432567,
-      "train_logloss": 0.5580337924133141,
-      "test_logloss": 0.6422353734007603,
-      "draw_accuracy": 0.694918579556602,
-      "cv_mean": 0.7142822792833127,
-      "cv_std": 0.003012392800421937
-    },
-    "catboost": {
-      "train_accuracy": 0.7223532479230121,
-      "test_accuracy": 0.7106897369044798,
-      "train_logloss": 0.6212417899937055,
-      "test_logloss": 0.6472106542815448,
-      "draw_accuracy": 0.6933490288404944,
-      "cv_mean": 0.7126230663752162,
-      "cv_std": 0.0031447538417992333
-    },
-    "random_forest": {
-      "train_accuracy": 0.8057053462436446,
-      "test_accuracy": 0.6990756103342024,
-      "train_logloss": 0.49615524432091956,
-      "test_logloss": 0.6654613961865776,
-      "draw_accuracy": 0.633313713949382,
-      "cv_mean": 0.7032603569390675,
-      "cv_std": 0.0008780437531160938
+      "test_accuracy": 0.6142374057053672,
+      "test_logloss": 0.8313200025918523,
+      "draw_accuracy": 0.42841328413284135,
+      "model_size_mb": 0.7723579406738281
     }
-  },
-  "feature_breakdown": {
-    "odds_features": 20,
-    "h2h_features": 9,
-    "form_features": 13
   }
 }
