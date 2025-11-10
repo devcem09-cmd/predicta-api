@@ -1428,27 +1428,54 @@
         }
 
         function showError(message) {
-            const container = document.getElementById('match-container');
-            container.innerHTML = `<div class="premium-alert">❌ ${message}</div>`;
-        }
+    const container = document.getElementById('match-container');
+    container.innerHTML = `<div class="premium-alert">❌ ${message}</div>`;
+}
 
-        function showSuccess(message) {
-            const container = document.getElementById('match-container');
-            const alert = document.createElement('div');
-            alert.className = 'premium-alert success';
-            alert.innerHTML = message;
-            container.insertBefore(alert, container.firstChild);
-            setTimeout(() => alert.remove(), 5000);
-        }
+function showSuccess(message) {
+    const container = document.getElementById('match-container');
+    const alert = document.createElement('div');
+    alert.className = 'premium-alert success';
+    alert.innerHTML = message;
+    container.insertBefore(alert, container.firstChild);
+    setTimeout(() => alert.remove(), 5000);
+}
 
-        function updateStatus(type, text) {
-            const badge = document.getElementById('api-status');
-            const statusText = document.getElementById('status-text');
-            badge.className = 'status-pill';
-            if (type === 'active') badge.classList.add('active');
-            statusText.textContent = text;
-        }
+// ⭐⭐⭐ BURAYA EKLE - showSuccess'ten SONRA ⭐⭐⭐
+function showLogicWarning(warnings) {
+    const container = document.getElementById('match-container');
+    
+    let warningHTML = `
+        <div class="premium-alert" style="border: 3px solid var(--danger); animation: warningPulse 2s infinite;">
+            <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 10px;">
+                <span style="font-size: 24px;">⚠️</span>
+                <strong style="color: var(--danger); font-size: 16px;">MANTIK HATASI TESPİT EDİLDİ!</strong>
+            </div>
+    `;
+    
+    warnings.forEach(warning => {
+        warningHTML += `
+            <div style="margin: 10px 0; padding: 10px; background: rgba(239, 68, 68, 0.1); border-radius: 8px;">
+                <div style="font-weight: bold; color: var(--danger);">${warning.severity}: ${warning.message}</div>
+                <div style="margin-top: 5px; font-size: 13px;">${warning.explanation}</div>
+                ${warning.suggestion ? `<div style="margin-top: 8px; padding: 8px; background: rgba(0,0,0,0.3); border-radius: 5px; font-size: 12px;"><strong>Çözüm:</strong> ${warning.suggestion}</div>` : ''}
+            </div>
+        `;
+    });
+    
+    warningHTML += `</div>`;
+    
+    container.insertAdjacentHTML('afterbegin', warningHTML);
+}
+// ⭐⭐⭐ EKLENECEK KOD SONU ⭐⭐⭐
 
+function updateStatus(type, text) {
+    const badge = document.getElementById('api-status');
+    const statusText = document.getElementById('status-text');
+    badge.className = 'status-pill';
+    if (type === 'active') badge.classList.add('active');
+    statusText.textContent = text;
+}
         function updateStatusBar() {
             if (!apiStatus) return;
             updateStatus(apiStatus.model_loaded ? 'active' : 'error', apiStatus.model_loaded ? 'Model Hazır ✓' : 'Model Yok');
