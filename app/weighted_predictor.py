@@ -236,141 +236,146 @@ class WeightedPredictor:
         return ms_prediction, adjustments
 
     def predict_match(self,
-                      home_team: str,
-                      away_team: str,
-                      odds: Optional[Dict[str, float]] = None,
-                      feature_engineer=None,
-                      actual_result: Optional[str] = None,
-                      return_all_predictions: bool = False) -> Dict[str, Any]:
-        """Tek maç tahmini (mantık kontrolü ile)"""
-        if feature_engineer is None:
-            raise ValueError("❌ FeatureEngineer required for predictions")
+                  home_team: str,
+                  away_team: str,
+                  odds: Optional[Dict[str, float]] = None,
+                  feature_engineer=None,
+                  actual_result: Optional[str] = None,
+                  return_all_predictions: bool = False) -> Dict[str, Any]:
+    """Tek maç tahmini (mantık kontrolü ile)"""
+    if feature_engineer is None:
+        raise ValueError("❌ FeatureEngineer required for predictions")
 
-        features = feature_engineer.extract_match_features(home_team, away_team, odds)
-        X = self._prepare_features(features)
-        X_scaled = self.scaler.transform(X)
-        proba = self.ensemble.predict_proba(X_scaled)[0]
+    features = feature_engineer.extract_match_features(home_team, away_team, odds)
+    X = self._prepare_features(features)
+    X_scaled = self.scaler.transform(X)
+    proba = self.ensemble.predict_proba(X_scaled)[0]
 
-        # Odds güveni
-        odds_confidence = 0.5
-        if odds and all(k in odds for k in ['1', 'X', '2']):
-            try:
-                vals = [float(odds['1']), float(odds['X']), float(odds['2'])]
-                if all(v > 0 for v in vals):
-                    spread = max(vals) - min(vals)
-                    odds_confidence = min(1.0, spread / 2.0)
-            except:
-                pass
+    # Odds güveni
+    odds_confidence = 0.5
+    if odds and all(k in odds for k in ['1', 'X', '2']):
+        try:
+            vals = [float(odds['1']), float(odds['X']), float(odds['2'])]
+            if all(v > 0 for v in vals):
+                spread = max(vals) - min(vals)
+                odds_confidence = min(1.0, spread / 2.0)
+        except:
+            pass
 
-        proba = self._apply_odds_priority(proba, odds_confidence)
+    proba = self._apply_odds_priority(proba, odds_confidence)
 
-        if proba[1] >= self.draw_threshold and proba[1] == proba.max():
-            pred_idx = 1
-        else:
-            pred_idx = int(np.argmax(proba))
+    if proba[1] >= self.draw_threshold and proba[1] == proba.max():
+        pred_idx = 1
+    else:
+        pred_idx = int(np.argmax(proba))
 
-        idx_to_label = {0: "1", 1: "X", 2: "2"}
-        idx_to_name = {0: "Home Win", 1: "Draw", 2: "Away Win"}
-        prediction_label = idx_to_label[pred_idx]
-        original_prediction = prediction_label
+    idx_to_label = {0: "1", 1: "X", 2: "2"}
+    idx_to_name = {0: "Home Win", 1: "Draw", 2: "Away Win"}
+    
+    # ✅ YENİ: Ters mapping (label'dan index'e)
+    label_to_idx = {"1": 0, "X": 1, "2": 2}
+    
+    prediction_label = idx_to_label[pred_idx]
+    original_prediction = prediction_label
 
-        result = {
+    result = {
+        "home_team": home_team,
+        "away_team": away_team,
+        "prediction": prediction_label,
+        "prediction_name": idx_to_name[pred_idx],
+        "probabilities": {
+            "home_win": float(proba[0]),
+            "draw": float(proba[1]),
+            "away_win": float(proba[2]),
+        },
+        "confidence": float(proba[pred_idx]),
+        "odds_confidence": float(odds_confidence),
+        "model_type": "weighted_ensemble",
+        "feature_priorities": {
+            "odds": "75%",
+            "h2h": "15%",
+            "form": "10%"
+        }
+    }
+
+    # 🔍 Alt/Üst ve KG tahminlerini de ekle (eğer return_all_predictions=True)
+    ou_prediction = None
+    ou_confidence = None
+    btts_prediction = None
+    btts_confidence = None
+    
+    if return_all_predictions:
+        # Bu değerler normalde ayrı endpoint'lerden gelir
+        # Burada sadece mantık kontrolü için placeholder
+        pass
+
+    # 🔍 MANTIK KONTROLÜ
+    if self.enable_logic_validation:
+        is_valid, warnings = self._validate_prediction_logic(
+            ms_prediction=prediction_label,
+            ms_confidence=result['confidence'],
+            ou_prediction=ou_prediction,
+            ou_confidence=ou_confidence,
+            btts_prediction=btts_prediction,
+            btts_confidence=btts_confidence
+        )
+        
+        result['logic_validation'] = {
+            'is_valid': is_valid,
+            'warnings': warnings
+        }
+        
+        # 🔧 Otomatik düzeltme (opsiyonel)
+        if not is_valid and len(warnings) > 0:
+            adjusted_pred, adjustments = self._adjust_predictions_for_logic(
+                prediction_label, proba, ou_prediction, btts_prediction
+            )
+            
+            if adjustments['adjusted']:
+                # ✅ DÜZELTİLDİ: label_to_idx kullan
+                result['prediction'] = adjusted_pred
+                result['prediction_name'] = idx_to_name[label_to_idx[adjusted_pred]]
+                result['auto_adjusted'] = adjustments
+                result['confidence'] = result['confidence'] * (1 - adjustments.get('confidence_penalty', 0))
+
+    if odds and all(k in odds for k in ['1', 'X', '2']):
+        try:
+            o1, ox, o2 = float(odds['1']), float(odds['X']), float(odds['2'])
+            total_prob = (1/o1 + 1/ox + 1/o2)
+            result["odds_analysis"] = {
+                "market_probabilities": {
+                    "home_win": round((1/o1) / total_prob, 4),
+                    "draw": round((1/ox) / total_prob, 4),
+                    "away_win": round((1/o2) / total_prob, 4),
+                },
+                "market_margin": round(total_prob - 1.0, 4),
+                "agreement_with_odds": self._calculate_agreement(proba, odds)
+            }
+        except:
+            pass
+
+    if hasattr(feature_engineer, 'extract_match_features'):
+        result["feature_analysis"] = {
+            "odds_features_used": len([f for f in features.keys() if 'odds_' in f or 'market_' in f]),
+            "h2h_features_used": len([f for f in features.keys() if f.startswith('h2h_')]),
+            "form_features_used": len([f for f in features.keys() if 'form_' in f]),
+        }
+
+    if self.enable_monitoring:
+        self.predictions_log.append({
+            "timestamp": datetime.now().isoformat(),
             "home_team": home_team,
             "away_team": away_team,
             "prediction": prediction_label,
-            "prediction_name": idx_to_name[pred_idx],
-            "probabilities": {
-                "home_win": float(proba[0]),
-                "draw": float(proba[1]),
-                "away_win": float(proba[2]),
-            },
-            "confidence": float(proba[pred_idx]),
-            "odds_confidence": float(odds_confidence),
-            "model_type": "weighted_ensemble",
-            "feature_priorities": {
-                "odds": "75%",
-                "h2h": "15%",
-                "form": "10%"
-            }
-        }
+            "confidence": result["confidence"],
+            "probabilities": result["probabilities"],
+            "actual": actual_result,
+            "correct": (actual_result == prediction_label) if actual_result else None,
+            "logic_validated": self.enable_logic_validation,
+            "had_warnings": len(result.get('logic_validation', {}).get('warnings', [])) > 0
+        })
 
-        # 🔍 Alt/Üst ve KG tahminlerini de ekle (eğer return_all_predictions=True)
-        ou_prediction = None
-        ou_confidence = None
-        btts_prediction = None
-        btts_confidence = None
-        
-        if return_all_predictions:
-            # Bu değerler normalde ayrı endpoint'lerden gelir
-            # Burada sadece mantık kontrolü için placeholder
-            pass
-
-        # 🔍 MANTIK KONTROLÜ
-        if self.enable_logic_validation:
-            is_valid, warnings = self._validate_prediction_logic(
-                ms_prediction=prediction_label,
-                ms_confidence=result['confidence'],
-                ou_prediction=ou_prediction,
-                ou_confidence=ou_confidence,
-                btts_prediction=btts_prediction,
-                btts_confidence=btts_confidence
-            )
-            
-            result['logic_validation'] = {
-                'is_valid': is_valid,
-                'warnings': warnings
-            }
-            
-            # 🔧 Otomatik düzeltme (opsiyonel)
-            if not is_valid and len(warnings) > 0:
-                adjusted_pred, adjustments = self._adjust_predictions_for_logic(
-                    prediction_label, proba, ou_prediction, btts_prediction
-                )
-                
-                if adjustments['adjusted']:
-                    result['prediction'] = adjusted_pred
-                    result['prediction_name'] = idx_to_name[idx_to_label[adjusted_pred]]
-                    result['auto_adjusted'] = adjustments
-                    result['confidence'] = result['confidence'] * (1 - adjustments.get('confidence_penalty', 0))
-
-        if odds and all(k in odds for k in ['1', 'X', '2']):
-            try:
-                o1, ox, o2 = float(odds['1']), float(odds['X']), float(odds['2'])
-                total_prob = (1/o1 + 1/ox + 1/o2)
-                result["odds_analysis"] = {
-                    "market_probabilities": {
-                        "home_win": round((1/o1) / total_prob, 4),
-                        "draw": round((1/ox) / total_prob, 4),
-                        "away_win": round((1/o2) / total_prob, 4),
-                    },
-                    "market_margin": round(total_prob - 1.0, 4),
-                    "agreement_with_odds": self._calculate_agreement(proba, odds)
-                }
-            except:
-                pass
-
-        if hasattr(feature_engineer, 'extract_match_features'):
-            result["feature_analysis"] = {
-                "odds_features_used": len([f for f in features.keys() if 'odds_' in f or 'market_' in f]),
-                "h2h_features_used": len([f for f in features.keys() if f.startswith('h2h_')]),
-                "form_features_used": len([f for f in features.keys() if 'form_' in f]),
-            }
-
-        if self.enable_monitoring:
-            self.predictions_log.append({
-                "timestamp": datetime.now().isoformat(),
-                "home_team": home_team,
-                "away_team": away_team,
-                "prediction": prediction_label,
-                "confidence": result["confidence"],
-                "probabilities": result["probabilities"],
-                "actual": actual_result,
-                "correct": (actual_result == prediction_label) if actual_result else None,
-                "logic_validated": self.enable_logic_validation,
-                "had_warnings": len(result.get('logic_validation', {}).get('warnings', [])) > 0
-            })
-
-        return result
+    return result
 
     def validate_full_prediction_set(self,
                                     ms_prediction: str,
