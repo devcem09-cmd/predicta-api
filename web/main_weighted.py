@@ -755,15 +755,35 @@ async def validate_full_prediction(
     btts_confidence: float
 ):
     """3 tahmini birlikte kontrol et"""
-    result = predictor.validate_full_prediction_set(
-        ms_prediction=ms_prediction,
-        ms_confidence=ms_confidence,
-        ou_prediction=ou_prediction,
-        ou_confidence=ou_confidence,
-        btts_prediction=btts_prediction,
-        btts_confidence=btts_confidence
-    )
-    return result
+    
+    # ❌ HATALI: predictor
+    # ✅ DOĞRU: PREDICTOR (büyük harf)
+    
+    if PREDICTOR is None or PREDICTOR_TYPE == "no_model":
+        return JSONResponse(
+            status_code=503,
+            content={
+                "error": "No trained model available",
+                "message": "Please train a model first"
+            }
+        )
+    
+    try:
+        result = PREDICTOR.validate_full_prediction_set(  # ✅ Düzeltildi
+            ms_prediction=ms_prediction,
+            ms_confidence=ms_confidence,
+            ou_prediction=ou_prediction,
+            ou_confidence=ou_confidence,
+            btts_prediction=btts_prediction,
+            btts_confidence=btts_confidence
+        )
+        return result
+    except Exception as e:
+        logging.exception("Validation failed")
+        return JSONResponse(
+            status_code=500,
+            content={"error": str(e), "message": "Validation failed"}
+        )
 @app.post("/api/matches/clear-cache")
 def clear_matches_cache():
     """Clear matches cache"""
