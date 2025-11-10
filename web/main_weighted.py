@@ -236,7 +236,8 @@ if WEIGHTED_AVAILABLE:
             PREDICTOR = WeightedPredictor(
                 model_dir=model_dir,
                 draw_threshold=0.30,
-                enable_monitoring=True
+                enable_monitoring=True,
+                enable_logic_validation=True
             )
             PREDICTOR_TYPE = "weighted"
             print("✅ Weighted predictor initialized successfully")
