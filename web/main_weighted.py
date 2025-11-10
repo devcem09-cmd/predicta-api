@@ -744,7 +744,25 @@ def predict_btts(data: dict):
             content={"error": str(e), "message": "BTTS prediction failed"}
         )
 
-
+@app.post("/api/validate/full-prediction")
+async def validate_full_prediction(
+    ms_prediction: str,
+    ms_confidence: float,
+    ou_prediction: str,
+    ou_confidence: float,
+    btts_prediction: bool,
+    btts_confidence: float
+):
+    """3 tahmini birlikte kontrol et"""
+    result = predictor.validate_full_prediction_set(
+        ms_prediction=ms_prediction,
+        ms_confidence=ms_confidence,
+        ou_prediction=ou_prediction,
+        ou_confidence=ou_confidence,
+        btts_prediction=btts_prediction,
+        btts_confidence=btts_confidence
+    )
+    return result
 @app.post("/api/matches/clear-cache")
 def clear_matches_cache():
     """Clear matches cache"""
