@@ -1257,124 +1257,137 @@
         }
 
         function createPremiumMatchCard(match, prediction) {
-            const card = document.createElement('div');
-            card.className = 'premium-match-card';
-            
-            const hasPrediction = prediction && prediction.prediction;
-            const confidence = hasPrediction ? (prediction.confidence * 100).toFixed(0) : 0;
-            const pred = hasPrediction ? prediction.prediction : '?';
-            
-            const overUnder = prediction?.over_under_prediction || {};
-            const btts = prediction?.btts_prediction || {};
-            
-            // Mantık validasyonu kontrolü
-            const hasLogicWarnings = prediction?.logic_validation && !prediction.logic_validation.is_valid;
-            const logicWarnings = prediction?.logic_validation?.warnings || [];
-            const criticalWarning = logicWarnings.find(w => w.severity === 'CRITICAL');
-            
-            // Kart stilini uyarıya göre değiştir
-            if (hasLogicWarnings) {
-                card.style.borderLeftColor = 'var(--danger)';
-                card.style.borderLeftWidth = '5px';
-            }
-            
-            card.innerHTML = `
-                <div class="match-header-premium">
-                    <div class="team-info">
-                        <div class="match-teams-premium">
-                            ${match.home_team} <span class="vs-separator">VS</span> ${match.away_team}
-                        </div>
-                        <div class="match-meta-premium">
-                            <span class="meta-badge">🏆 ${match.league_name || match.league_code}</span>
-                            <span class="meta-badge">📅 ${new Date(match.date).toLocaleDateString('tr-TR')}</span>
-                            <span class="meta-badge weighted-badge-premium">⚙️ WEIGHTED AI</span>
-                        </div>
-                    </div>
-                    
-                    <div class="prediction-panel">
-                        <div class="prediction-header">⚽ Maç Sonucu</div>
-                        <div class="prediction-grid">
-                            <div class="pred-option ${pred === '1' ? 'selected' : ''}">1</div>
-                            <div class="pred-option ${pred === 'X' ? 'selected' : ''}">X</div>
-                            <div class="pred-option ${pred === '2' ? 'selected' : ''}">2</div>
-                        </div>
-                        ${hasPrediction ? `
-                            <div class="confidence-meter">
-                                <span class="confidence-label">Güven</span>
-                                <span class="confidence-value">${confidence}%</span>
-                            </div>
-                        ` : `
-                            <div style="text-align: center; color: var(--text-muted); padding: 15px;">
-                                Tahmin bekleniyor...
-                            </div>
-                        `}
-                    </div>
+    const card = document.createElement('div');
+    card.className = 'premium-match-card';
+    
+    const hasPrediction = prediction && prediction.prediction;
+    const confidence = hasPrediction ? (prediction.confidence * 100).toFixed(0) : 0;
+    const pred = hasPrediction ? prediction.prediction : '?';
+    
+    const overUnder = prediction?.over_under_prediction || {};
+    const btts = prediction?.btts_prediction || {};
+    
+    // Mantık validasyonu kontrolü
+    const hasLogicWarnings = prediction?.logic_validation && !prediction.logic_validation.is_valid;
+    const logicWarnings = prediction?.logic_validation?.warnings || [];
+    const criticalWarning = logicWarnings.find(w => w.severity === 'CRITICAL');
+    
+    // Kart stilini uyarıya göre değiştir
+    if (hasLogicWarnings) {
+        card.style.borderLeftColor = 'var(--danger)';
+        card.style.borderLeftWidth = '5px';
+    }
+    
+    card.innerHTML = `
+        ${hasLogicWarnings ? `
+            <div class="logic-warning-badge">
+                ⚠️ MANTIK HATASI
+            </div>
+        ` : ''}
+        
+        <div class="match-header-premium">
+            <div class="team-info">
+                <div class="match-teams-premium">
+                    ${match.home_team} <span class="vs-separator">VS</span> ${match.away_team}
                 </div>
-                
+                <div class="match-meta-premium">
+                    <span class="meta-badge">🏆 ${match.league_name || match.league_code}</span>
+                    <span class="meta-badge">📅 ${new Date(match.date).toLocaleDateString('tr-TR')}</span>
+                    <span class="meta-badge weighted-badge-premium">⚙️ WEIGHTED AI</span>
+                </div>
+            </div>
+            
+            <div class="prediction-panel">
+                <div class="prediction-header">⚽ Maç Sonucu</div>
+                <div class="prediction-grid">
+                    <div class="pred-option ${pred === '1' ? 'selected' : ''}">1</div>
+                    <div class="pred-option ${pred === 'X' ? 'selected' : ''}">X</div>
+                    <div class="pred-option ${pred === '2' ? 'selected' : ''}">2</div>
+                </div>
                 ${hasPrediction ? `
-                    <div class="multi-predictions">
-                        ${overUnder.prediction ? `
-                            <div class="mini-pred-box">
-                                <div class="mini-pred-label">📊 Alt/Üst 2.5</div>
-                                <div class="mini-pred-options">
-                                    <div class="mini-option ${overUnder.prediction === 'over' ? 'selected' : ''}">ÜST</div>
-                                    <div class="mini-option ${overUnder.prediction === 'under' ? 'selected' : ''}">ALT</div>
-                                </div>
-                                <div class="mini-confidence">Güven: ${(overUnder.confidence * 100).toFixed(0)}%</div>
-                            </div>
-                        ` : ''}
-                        
-                        ${btts.prediction !== undefined ? `
-                            <div class="mini-pred-box">
-                                <div class="mini-pred-label">🎯 KG Var/Yok</div>
-                                <div class="mini-pred-options">
-                                    <div class="mini-option ${btts.prediction === true ? 'selected' : ''}">VAR</div>
-                                    <div class="mini-option ${btts.prediction === false ? 'selected' : ''}">YOK</div>
-                                </div>
-                                <div class="mini-confidence">Güven: ${(btts.confidence * 100).toFixed(0)}%</div>
-                            </div>
-                        ` : ''}
+                    <div class="confidence-meter">
+                        <span class="confidence-label">Güven</span>
+                        <span class="confidence-value">${confidence}%</span>
                     </div>
-                    
-                    <div class="match-details-premium">
-                        <div class="detail-grid">
-                            <div class="detail-item">
-                                <div class="detail-item-label">🎯 Tahmin</div>
-                                <div class="detail-item-value">${pred === '1' ? 'Ev Sahibi' : pred === 'X' ? 'Beraberlik' : 'Deplasman'}</div>
-                            </div>
-                            <div class="detail-item">
-                                <div class="detail-item-label">💪 Güven</div>
-                                <div class="detail-item-value">${confidence}%</div>
-                            </div>
-                            <div class="detail-item">
-                                <div class="detail-item-label">📊 Olasılıklar</div>
-                                <div class="detail-item-value">
-                                    1: ${(prediction.probabilities.home_win * 100).toFixed(1)}% | 
-                                    X: ${(prediction.probabilities.draw * 100).toFixed(1)}% | 
-                                    2: ${(prediction.probabilities.away_win * 100).toFixed(1)}%
-                                </div>
-                            </div>
-                            ${match.odds ? `
-                                <div class="detail-item">
-                                    <div class="detail-item-label">💰 Oranlar</div>
-                                    <div class="detail-item-value">
-                                        1: ${match.odds['1']} | X: ${match.odds['X']} | 2: ${match.odds['2']}
-                                    </div>
-                                </div>
-                            ` : ''}
+                ` : `
+                    <div style="text-align: center; color: var(--text-muted); padding: 15px;">
+                        Tahmin bekleniyor...
+                    </div>
+                `}
+            </div>
+        </div>
+        
+        ${hasLogicWarnings ? `
+            <div style="background: rgba(239, 68, 68, 0.1); border: 1px solid var(--danger); border-radius: 8px; padding: 10px; margin: 10px 0;">
+                <div style="color: var(--danger); font-weight: bold; font-size: 12px;">
+                    ⚠️ MANTIK UYARISI: ${logicWarnings[0]?.message || 'Geçersiz tahmin kombinasyonu'}
+                </div>
+            </div>
+        ` : ''}
+        
+        ${hasPrediction ? `
+            <div class="multi-predictions">
+                ${overUnder.prediction ? `
+                    <div class="mini-pred-box">
+                        <div class="mini-pred-label">📊 Alt/Üst 2.5</div>
+                        <div class="mini-pred-options">
+                            <div class="mini-option ${overUnder.prediction === 'over' ? 'selected' : ''}">ÜST</div>
+                            <div class="mini-option ${overUnder.prediction === 'under' ? 'selected' : ''}">ALT</div>
                         </div>
+                        <div class="mini-confidence">Güven: ${(overUnder.confidence * 100).toFixed(0)}%</div>
                     </div>
                 ` : ''}
-            `;
+                
+                ${btts.prediction !== undefined ? `
+                    <div class="mini-pred-box">
+                        <div class="mini-pred-label">🎯 KG Var/Yok</div>
+                        <div class="mini-pred-options">
+                            <div class="mini-option ${btts.prediction === true ? 'selected' : ''}">VAR</div>
+                            <div class="mini-option ${btts.prediction === false ? 'selected' : ''}">YOK</div>
+                        </div>
+                        <div class="mini-confidence">Güven: ${(btts.confidence * 100).toFixed(0)}%</div>
+                    </div>
+                ` : ''}
+            </div>
             
-            card.onclick = () => {
-                const details = card.querySelector('.match-details-premium');
-                if (details) details.classList.toggle('expanded');
-            };
-            
-            return card;
-        }
-
+            <div class="match-details-premium">
+                <div class="detail-grid">
+                    <div class="detail-item">
+                        <div class="detail-item-label">🎯 Tahmin</div>
+                        <div class="detail-item-value">${pred === '1' ? 'Ev Sahibi' : pred === 'X' ? 'Beraberlik' : 'Deplasman'}</div>
+                    </div>
+                    <div class="detail-item">
+                        <div class="detail-item-label">💪 Güven</div>
+                        <div class="detail-item-value">${confidence}%</div>
+                    </div>
+                    <div class="detail-item">
+                        <div class="detail-item-label">📊 Olasılıklar</div>
+                        <div class="detail-item-value">
+                            1: ${(prediction.probabilities.home_win * 100).toFixed(1)}% | 
+                            X: ${(prediction.probabilities.draw * 100).toFixed(1)}% | 
+                            2: ${(prediction.probabilities.away_win * 100).toFixed(1)}%
+                        </div>
+                    </div>
+                    ${match.odds ? `
+                        <div class="detail-item">
+                            <div class="detail-item-label">💰 Oranlar</div>
+                            <div class="detail-item-value">
+                                1: ${match.odds['1']} | X: ${match.odds['X']} | 2: ${match.odds['2']}
+                            </div>
+                        </div>
+                    ` : ''}
+                </div>
+            </div>
+        ` : ''}
+    `;
+    
+    card.onclick = () => {
+        const details = card.querySelector('.match-details-premium');
+        if (details) details.classList.toggle('expanded');
+    };
+    
+    return card;
+}
         function filterMatches(type) {
             currentFilter = type;
             
