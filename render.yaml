@@ -8,37 +8,50 @@ services:
     repo: https://github.com/devcem09-cmd/predicta-api
     branch: main
     
-    # Build command - Install dependencies only
+    # Build command - Install dependencies and train model
     buildCommand: |
       echo "📦 Installing dependencies..."
       pip install --upgrade pip
       pip install -r requirements.txt
       echo "✅ Dependencies installed"
-    
-    # Start command - Train model if missing, then start API
-    startCommand: |
-      echo "🎯 Checking for model file..."
-      if [ ! -f "models/weighted_model.pkl" ]; then
-        echo "⚠️  Model not found, training now..."
-        echo "   This will take 2-5 minutes on first deploy"
-        mkdir -p models
-        python app/weighted_trainer.py || {
-          echo "❌ Model training failed"
-          echo "   Starting API in limited mode"
-        }
-      else
-        echo "✅ Model found, skipping training"
+      
+      echo "🎯 Training model during build phase..."
+      mkdir -p models data
+      if [ -f "app/weighted_trainer.py" ]; then
+        python app/weighted_trainer.py || echo "⚠️ Training failed, will use existing model"
       fi
-      echo "🌐 Starting API server..."
-      python main_weighted.py
+      echo "✅ Build complete"
+    
+    # Start command - Use uvicorn directly
+    startCommand: |
+      echo "🚀 Starting Predicta API..."
+      echo "📊 Model status check..."
+      if [ -f "models/weighted_model.pkl" ]; then
+        echo "✅ Model found"
+      else
+        echo "⚠️ Model not found - API will run in limited mode"
+      fi
+      echo "🌐 Starting uvicorn server..."
+      uvicorn main_weighted:app --host 0.0.0.0 --port $PORT --log-level info
     
     envVars:
       - key: PYTHON_VERSION
         value: 3.11.0
       - key: PORT
-        value: 8000
+        sync: false  # Render otomatik atar
       - key: LOG_LEVEL
         value: info
+      - key: WORKERS
+        value: 1  # Free plan için tek worker
     
-    healthCheckPath: /api/status
+    # Health check - Mevcut endpoint'e göre ayarlayın
+    healthCheckPath: /
+    
+    # Auto deploy
     autoDeploy: true
+    
+    # Disk ayarları (model için)
+    disk:
+      name: predicta-data
+      mountPath: /opt/render/project/src/models
+      sizeGB: 0.512
