@@ -2,32 +2,35 @@ import json
 import joblib
 import numpy as np
 from pathlib import Path
-from typing import Dict, List, Optional, Any
+from typing import Dict, List, Optional, Any, Tuple
 from datetime import datetime
 
 class WeightedPredictor:
     """
-    AĞIRLIKLI TAHMİN SİSTEMİ
+    AĞIRLIKLI TAHMİN SİSTEMİ + MANTIK VALIDASYONU
 
     Öncelik:
     - %75: Bahis Oranları
     - %15: H2H Geçmiş
     - %10: Form Durumu
+    
+    + Tahmin mantık kontrolü (MS1 + Alt + KG Var gibi çelişkileri yakalar)
     """
 
     def __init__(self,
                  model_dir: Optional[Path] = None,
                  draw_threshold: float = 0.30,
-                 enable_monitoring: bool = True):
+                 enable_monitoring: bool = True,
+                 enable_logic_validation: bool = True):
         """Model yükleme ve yapılandırma"""
-        # ✅ MODEL DİZİNİNİ OTOMATİK ALGILA
         if model_dir is None:
-            base_dir = Path(__file__).resolve().parents[1]  # ML_Project_Template
+            base_dir = Path(__file__).resolve().parents[1]
             model_dir = base_dir / "models"
 
         self.model_dir = Path(model_dir)
         self.draw_threshold = draw_threshold
         self.enable_monitoring = enable_monitoring
+        self.enable_logic_validation = enable_logic_validation
 
         self.ensemble = None
         self.scaler = None
@@ -38,19 +41,14 @@ class WeightedPredictor:
         print(f"🎯 Weighted Predictor Initializing...")
         print(f"   Model dir: {self.model_dir}")
         print(f"   Draw threshold: {self.draw_threshold}")
+        print(f"   Logic validation: {'ENABLED ✅' if enable_logic_validation else 'DISABLED'}")
 
         self._load_models()
 
     def _load_models(self):
         """Model, scaler ve metadata dosyalarını yükle"""
         try:
-            # 🔍 MODEL ADAYLARI
-            candidate_models = [
-                "weighted_model.pkl",
-                "model.pkl",
-                "best_model.pkl"
-            ]
-
+            candidate_models = ["weighted_model.pkl", "model.pkl", "best_model.pkl"]
             model_path = None
             for name in candidate_models:
                 path = self.model_dir / name
@@ -64,12 +62,7 @@ class WeightedPredictor:
             print(f"✅ Loading model: {model_path}")
             self.ensemble = joblib.load(model_path)
 
-            # 🔍 SCALER ADAYLARI
-            candidate_scalers = [
-                "weighted_scaler.pkl",
-                "scaler.pkl"
-            ]
-
+            candidate_scalers = ["weighted_scaler.pkl", "scaler.pkl"]
             scaler_path = None
             for name in candidate_scalers:
                 path = self.model_dir / name
@@ -83,7 +76,6 @@ class WeightedPredictor:
             print(f"✅ Loading scaler: {scaler_path}")
             self.scaler = joblib.load(scaler_path)
 
-            # 🔍 METADATA
             metadata_path = self.model_dir / "weighted_model_metadata.json"
             if metadata_path.exists():
                 with open(metadata_path, 'r', encoding='utf-8') as f:
@@ -129,13 +121,128 @@ class WeightedPredictor:
         proba_calibrated = proba_calibrated / proba_calibrated.sum()
         return proba_calibrated
 
+    def _validate_prediction_logic(self, 
+                                   ms_prediction: str,
+                                   ms_confidence: float,
+                                   ou_prediction: Optional[str] = None,
+                                   ou_confidence: Optional[float] = None,
+                                   btts_prediction: Optional[bool] = None,
+                                   btts_confidence: Optional[float] = None) -> Tuple[bool, List[Dict[str, str]]]:
+        """
+        🔍 TAHMİN MANTIK KONTROLÜ
+        
+        Matematiksel olarak imkansız kombinasyonları tespit eder:
+        - MS1/MS2 + Alt 2.5 + KG Var = İMKANSIZ (sadece 1-1 olur ama 1-1 beraberlik!)
+        - MSX + Alt 2.5 + KG Var = Sadece 1-1 (çok spesifik, güven düşürülmeli)
+        
+        Returns:
+            (is_valid, warnings_list)
+        """
+        if not self.enable_logic_validation:
+            return True, []
+        
+        warnings = []
+        is_valid = True
+        
+        # 🚨 KRİTİK HATA: MS1/MS2 + Alt 2.5 + KG Var
+        if ms_prediction in ['1', '2'] and ou_prediction == 'under' and btts_prediction == True:
+            is_valid = False
+            warnings.append({
+                'severity': 'CRITICAL',
+                'type': 'mathematical_impossibility',
+                'message': f"❌ {ms_prediction} + Alt 2.5 + KG Var = Matematiksel olarak imkansız!",
+                'explanation': (
+                    f"Alt 2.5 + KG Var kombinasyonu sadece 1-1 skorunu verir. "
+                    f"1-1 skoru beraberliktir, {ms_prediction} olamaz!"
+                ),
+                'possible_scores': ['1-1 (Beraberlik)'],
+                'suggestion': (
+                    f"Düzeltme önerileri:\n"
+                    f"  • {ms_prediction} + Alt 2.5 + KG YOK (1-0, 2-0 gibi)\n"
+                    f"  • {ms_prediction} + ÜST 2.5 + KG Var (2-1, 3-1 gibi)\n"
+                    f"  • MSX + Alt 2.5 + KG Var (1-1)"
+                )
+            })
+        
+        # ⚠️ UYARI: MSX + Alt 2.5 + KG Var (sadece 1-1)
+        elif ms_prediction == 'X' and ou_prediction == 'under' and btts_prediction == True:
+            warnings.append({
+                'severity': 'WARNING',
+                'type': 'overly_specific',
+                'message': "⚠️ MSX + Alt 2.5 + KG Var = Sadece 1-1 skoru (çok spesifik tahmin)",
+                'explanation': (
+                    "Bu kombinasyon matematiksel olarak doğru ama çok dar. "
+                    "Sadece tek bir skor (1-1) bu tahmini doğrular."
+                ),
+                'possible_scores': ['1-1'],
+                'confidence_adjustment': 'Güven seviyesi %15-20 düşürülmeli',
+                'risk': 'Yüksek risk - Sadece 1 skor seçeneği var'
+            })
+        
+        # 💡 BİLGİ: MS1/MS2 + Üst 2.5 + KG Var (mantıklı)
+        if ms_prediction in ['1', '2'] and ou_prediction == 'over' and btts_prediction == True:
+            warnings.append({
+                'severity': 'INFO',
+                'type': 'strong_combination',
+                'message': f"✅ {ms_prediction} + Üst 2.5 + KG Var = Mantıklı kombinasyon",
+                'possible_scores': ['2-1', '3-1', '3-2', '4-1', '4-2'] if ms_prediction == '1' else ['1-2', '1-3', '2-3', '1-4', '2-4'],
+                'confidence_note': 'Tahmin mantıksal olarak tutarlı'
+            })
+        
+        # 💡 BİLGİ: MS1/MS2 + Alt 2.5 + KG Yok (mantıklı)
+        if ms_prediction in ['1', '2'] and ou_prediction == 'under' and btts_prediction == False:
+            warnings.append({
+                'severity': 'INFO',
+                'type': 'strong_combination',
+                'message': f"✅ {ms_prediction} + Alt 2.5 + KG Yok = Mantıklı kombinasyon",
+                'possible_scores': ['1-0', '2-0'] if ms_prediction == '1' else ['0-1', '0-2'],
+                'confidence_note': 'Tahmin mantıksal olarak tutarlı'
+            })
+        
+        # ⚠️ UYARI: Düşük güvenle mantıksız tahmin
+        if not is_valid and ms_confidence and ms_confidence < 0.6:
+            warnings.append({
+                'severity': 'WARNING',
+                'type': 'low_confidence_error',
+                'message': f"⚠️ Mantıksız tahmin + Düşük güven ({ms_confidence*100:.0f}%)",
+                'suggestion': 'Model kararsız - Tahmin vermekten kaçının veya sadece en yüksek güvenli tahmini kullanın'
+            })
+        
+        return is_valid, warnings
+
+    def _adjust_predictions_for_logic(self,
+                                     ms_prediction: str,
+                                     ms_proba: np.ndarray,
+                                     ou_prediction: Optional[str],
+                                     btts_prediction: Optional[bool]) -> Tuple[str, Dict[str, Any]]:
+        """
+        🔧 MANTIK HATASI DÜZELTİCİ
+        
+        Eğer tahminler mantıksız kombinasyon oluşturuyorsa, otomatik düzeltme yapar.
+        """
+        adjustments = {'adjusted': False, 'original': ms_prediction, 'reason': None}
+        
+        # MS1/MS2 + Alt 2.5 + KG Var = İmkansız → MSX'e çevir
+        if ms_prediction in ['1', '2'] and ou_prediction == 'under' and btts_prediction == True:
+            ms_prediction = 'X'  # Beraberliğe çevir
+            adjustments = {
+                'adjusted': True,
+                'original': adjustments['original'],
+                'new': 'X',
+                'reason': 'Alt 2.5 + KG Var kombinasyonu sadece 1-1 (beraberlik) verir',
+                'confidence_penalty': 0.15
+            }
+        
+        return ms_prediction, adjustments
+
     def predict_match(self,
                       home_team: str,
                       away_team: str,
                       odds: Optional[Dict[str, float]] = None,
                       feature_engineer=None,
-                      actual_result: Optional[str] = None) -> Dict[str, Any]:
-        """Tek maç tahmini"""
+                      actual_result: Optional[str] = None,
+                      return_all_predictions: bool = False) -> Dict[str, Any]:
+        """Tek maç tahmini (mantık kontrolü ile)"""
         if feature_engineer is None:
             raise ValueError("❌ FeatureEngineer required for predictions")
 
@@ -165,6 +272,7 @@ class WeightedPredictor:
         idx_to_label = {0: "1", 1: "X", 2: "2"}
         idx_to_name = {0: "Home Win", 1: "Draw", 2: "Away Win"}
         prediction_label = idx_to_label[pred_idx]
+        original_prediction = prediction_label
 
         result = {
             "home_team": home_team,
@@ -185,6 +293,45 @@ class WeightedPredictor:
                 "form": "10%"
             }
         }
+
+        # 🔍 Alt/Üst ve KG tahminlerini de ekle (eğer return_all_predictions=True)
+        ou_prediction = None
+        ou_confidence = None
+        btts_prediction = None
+        btts_confidence = None
+        
+        if return_all_predictions:
+            # Bu değerler normalde ayrı endpoint'lerden gelir
+            # Burada sadece mantık kontrolü için placeholder
+            pass
+
+        # 🔍 MANTIK KONTROLÜ
+        if self.enable_logic_validation:
+            is_valid, warnings = self._validate_prediction_logic(
+                ms_prediction=prediction_label,
+                ms_confidence=result['confidence'],
+                ou_prediction=ou_prediction,
+                ou_confidence=ou_confidence,
+                btts_prediction=btts_prediction,
+                btts_confidence=btts_confidence
+            )
+            
+            result['logic_validation'] = {
+                'is_valid': is_valid,
+                'warnings': warnings
+            }
+            
+            # 🔧 Otomatik düzeltme (opsiyonel)
+            if not is_valid and len(warnings) > 0:
+                adjusted_pred, adjustments = self._adjust_predictions_for_logic(
+                    prediction_label, proba, ou_prediction, btts_prediction
+                )
+                
+                if adjustments['adjusted']:
+                    result['prediction'] = adjusted_pred
+                    result['prediction_name'] = idx_to_name[idx_to_label[adjusted_pred]]
+                    result['auto_adjusted'] = adjustments
+                    result['confidence'] = result['confidence'] * (1 - adjustments.get('confidence_penalty', 0))
 
         if odds and all(k in odds for k in ['1', 'X', '2']):
             try:
@@ -218,9 +365,72 @@ class WeightedPredictor:
                 "confidence": result["confidence"],
                 "probabilities": result["probabilities"],
                 "actual": actual_result,
-                "correct": (actual_result == prediction_label) if actual_result else None
+                "correct": (actual_result == prediction_label) if actual_result else None,
+                "logic_validated": self.enable_logic_validation,
+                "had_warnings": len(result.get('logic_validation', {}).get('warnings', [])) > 0
             })
 
+        return result
+
+    def validate_full_prediction_set(self,
+                                    ms_prediction: str,
+                                    ms_confidence: float,
+                                    ou_prediction: str,
+                                    ou_confidence: float,
+                                    btts_prediction: bool,
+                                    btts_confidence: float) -> Dict[str, Any]:
+        """
+        🔍 TAM TAHMİN SETİ VALIDASYONU
+        
+        API'den gelen 3 farklı tahmini (MS, OU, BTTS) birlikte kontrol eder.
+        """
+        is_valid, warnings = self._validate_prediction_logic(
+            ms_prediction=ms_prediction,
+            ms_confidence=ms_confidence,
+            ou_prediction=ou_prediction,
+            ou_confidence=ou_confidence,
+            btts_prediction=btts_prediction,
+            btts_confidence=btts_confidence
+        )
+        
+        result = {
+            'is_valid': is_valid,
+            'warnings': warnings,
+            'predictions': {
+                'match_result': {'prediction': ms_prediction, 'confidence': ms_confidence},
+                'over_under': {'prediction': ou_prediction, 'confidence': ou_confidence},
+                'btts': {'prediction': btts_prediction, 'confidence': btts_confidence}
+            }
+        }
+        
+        # Otomatik düzeltme önerisi
+        if not is_valid:
+            suggestions = []
+            
+            if ms_prediction in ['1', '2'] and ou_prediction == 'under' and btts_prediction:
+                suggestions.append({
+                    'option_1': {
+                        'ms': ms_prediction,
+                        'ou': 'under',
+                        'btts': False,
+                        'explanation': f'{ms_prediction} + Alt 2.5 + KG Yok (örn: 1-0, 2-0)'
+                    },
+                    'option_2': {
+                        'ms': ms_prediction,
+                        'ou': 'over',
+                        'btts': True,
+                        'explanation': f'{ms_prediction} + Üst 2.5 + KG Var (örn: 2-1, 3-1)'
+                    },
+                    'option_3': {
+                        'ms': 'X',
+                        'ou': 'under',
+                        'btts': True,
+                        'explanation': 'Beraberlik + Alt 2.5 + KG Var (sadece 1-1)'
+                    }
+                })
+            
+            result['suggestions'] = suggestions
+        
         return result
 
     def _calculate_agreement(self, model_proba: np.ndarray, odds: Dict[str, float]) -> str:
@@ -250,7 +460,9 @@ class WeightedPredictor:
         """Birden fazla maç için toplu tahmin"""
         results = []
         print(f"\n🔮 Batch Prediction: {len(matches)} matches")
+        print(f"   Logic validation: {'ENABLED ✅' if self.enable_logic_validation else 'DISABLED'}")
 
+        invalid_count = 0
         for i, match in enumerate(matches, 1):
             try:
                 result = self.predict_match(
@@ -261,6 +473,10 @@ class WeightedPredictor:
                     actual_result=match.get("actual_result")
                 )
                 results.append(result)
+                
+                if not result.get('logic_validation', {}).get('is_valid', True):
+                    invalid_count += 1
+                
                 if i % 10 == 0:
                     print(f"   Processed: {i}/{len(matches)}")
             except Exception as e:
@@ -268,6 +484,9 @@ class WeightedPredictor:
                 continue
 
         print(f"✅ Batch prediction completed: {len(results)}/{len(matches)} successful")
+        if invalid_count > 0:
+            print(f"⚠️  Logic warnings: {invalid_count}/{len(results)} predictions had validation warnings")
+        
         return results
 
     def get_performance_stats(self) -> Dict[str, Any]:
@@ -292,12 +511,22 @@ class WeightedPredictor:
                     "accuracy": class_correct / len(preds)
                 }
 
+        # Mantık validasyonu istatistikleri
+        logic_stats = {}
+        if self.enable_logic_validation:
+            total_with_warnings = sum(1 for p in self.predictions_log if p.get("had_warnings"))
+            logic_stats = {
+                "total_with_warnings": total_with_warnings,
+                "warning_rate": total_with_warnings / total if total > 0 else 0
+            }
+
         return {
             "total_predictions": total,
             "evaluated_predictions": len(evaluated),
             "accuracy": correct / len(evaluated),
             "class_performance": class_stats,
-            "average_confidence": np.mean([p["confidence"] for p in self.predictions_log])
+            "average_confidence": np.mean([p["confidence"] for p in self.predictions_log]),
+            "logic_validation": logic_stats
         }
 
     def get_recent_predictions(self, n: int = 10) -> List[Dict[str, Any]]:
@@ -321,45 +550,33 @@ class WeightedPredictor:
 # Kullanım örneği
 if __name__ == "__main__":
     print("=" * 70)
-    print("🎯 WEIGHTED PREDICTOR TEST MODE")
+    print("🎯 WEIGHTED PREDICTOR + LOGIC VALIDATION TEST")
     print("=" * 70)
 
-    predictor = WeightedPredictor()
+    predictor = WeightedPredictor(enable_logic_validation=True)
 
-    print("\n✅ Model ve scaler başarıyla yüklendiyse, aşağıdaki örnek test çalışır:")
-
-    try:
-        # Sahte test verisi (gerçek FeatureEngineer olmadan)
-        dummy_features = {
-            "odds_home_win": 2.1,
-            "odds_draw": 3.4,
-            "odds_away_win": 3.1,
-            "form_home_points": 8,
-            "form_away_points": 6,
-            "h2h_home_wins": 3,
-            "h2h_draws": 2,
-            "h2h_away_wins": 1,
-        }
-
-        class DummyFeatureEngineer:
-            def extract_match_features(self, home_team, away_team, odds):
-                return dummy_features
-
-        feature_engineer = DummyFeatureEngineer()
-
-        result = predictor.predict_match(
-            home_team="Galatasaray",
-            away_team="Fenerbahçe",
-            odds={'1': 2.10, 'X': 3.40, '2': 3.10},
-            feature_engineer=feature_engineer
-        )
-
-        print("\n🔮 TEST PREDICTION RESULT:")
-        print(json.dumps(result, indent=2, ensure_ascii=False))
-
-    except Exception as e:
-        print(f"\n❌ Test failed: {e}")
-
-    print("\n⚠️  To use predictor in full mode, run:")
-    print("   uvicorn main_weighted:app --reload")
-    print("   and access http://127.0.0.1:8000/docs")
+    print("\n🧪 Testing logic validation...")
+    
+    # Test Case 1: İmkansız kombinasyon
+    print("\n❌ Test 1: MS1 + Alt 2.5 + KG Var (İMKANSIZ)")
+    result1 = predictor.validate_full_prediction_set(
+        ms_prediction='1',
+        ms_confidence=0.51,
+        ou_prediction='under',
+        ou_confidence=0.65,
+        btts_prediction=True,
+        btts_confidence=0.80
+    )
+    print(json.dumps(result1, indent=2, ensure_ascii=False))
+    
+    # Test Case 2: Mantıklı kombinasyon
+    print("\n✅ Test 2: MS1 + Üst 2.5 + KG Var (MANTIKLI)")
+    result2 = predictor.validate_full_prediction_set(
+        ms_prediction='1',
+        ms_confidence=0.65,
+        ou_prediction='over',
+        ou_confidence=0.70,
+        btts_prediction=True,
+        btts_confidence=0.75
+    )
+    print(json.dumps(result2, indent=2, ensure_ascii=False))
