@@ -900,8 +900,19 @@ async def startup_event():
 
 if __name__ == "__main__":
     import uvicorn
+    import os
+    
     print(f"🎯 Starting Predicta Weighted API...")
     print(f"📊 Model Status: {'READY' if MODEL_READY else 'NOT READY'}")
     print(f"⚖️ Weighted System: {'AVAILABLE' if WEIGHTED_AVAILABLE else 'UNAVAILABLE'}")
     
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    # Render PORT'u al veya default 8000 kullan
+    port = int(os.environ.get("PORT", 8000))
+    print(f"🌐 Binding to port: {port}")
+    
+    uvicorn.run(
+        app, 
+        host="0.0.0.0",  # Tüm network interface'leri dinle
+        port=port,        # Render'ın verdiği PORT'u kullan
+        log_level="info"
+    )
