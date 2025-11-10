@@ -609,6 +609,142 @@ def predict_match(data: dict):
         )
 
 
+# ⭐ YENİ: Alt/Üst 2.5 Tahmin Endpoint'i
+@app.post("/api/predict/over-under")
+def predict_over_under(data: dict):
+    """Predict Over/Under 2.5 goals"""
+    
+    if PREDICTOR is None or PREDICTOR_TYPE == "no_model":
+        return JSONResponse(
+            status_code=503,
+            content={
+                "error": "No trained model available",
+                "message": "Please train a model first"
+            }
+        )
+    
+    try:
+        # Feature extraction
+        features = FEATURE_ENGINEER.extract_match_features(
+            home_team=data.get("home_team"),
+            away_team=data.get("away_team"),
+            odds=data.get("odds")
+        )
+        
+        # Beklenen gol hesaplama
+        home_goals_scored = features.get("home_form_avg_goals_scored", 1.2)
+        away_goals_scored = features.get("away_form_avg_goals_scored", 1.2)
+        h2h_avg_total = features.get("h2h_avg_total_goals", 2.4)
+        
+        # Weighted average
+        expected_goals = (home_goals_scored * 0.4 + 
+                         away_goals_scored * 0.4 + 
+                         h2h_avg_total * 0.2)
+        
+        # Probability calculation
+        if expected_goals > 2.75:
+            over_prob = 0.70
+        elif expected_goals > 2.5:
+            over_prob = 0.60
+        elif expected_goals > 2.25:
+            over_prob = 0.50
+        else:
+            over_prob = 0.35
+        
+        under_prob = 1.0 - over_prob
+        
+        prediction = "over" if over_prob > 0.5 else "under"
+        confidence = max(over_prob, under_prob)
+        
+        return {
+            "home_team": data.get("home_team"),
+            "away_team": data.get("away_team"),
+            "prediction": prediction,
+            "confidence": confidence,
+            "expected_goals": round(expected_goals, 2),
+            "probabilities": {
+                "over": round(over_prob, 4),
+                "under": round(under_prob, 4)
+            },
+            "threshold": 2.5
+        }
+        
+    except Exception as e:
+        logging.exception("Over/Under prediction failed")
+        return JSONResponse(
+            status_code=500,
+            content={"error": str(e), "message": "Over/Under prediction failed"}
+        )
+
+
+# ⭐ YENİ: KG Var/Yok (Both Teams To Score) Tahmin Endpoint'i
+@app.post("/api/predict/btts")
+def predict_btts(data: dict):
+    """Predict Both Teams To Score (Karşılıklı Gol)"""
+    
+    if PREDICTOR is None or PREDICTOR_TYPE == "no_model":
+        return JSONResponse(
+            status_code=503,
+            content={
+                "error": "No trained model available",
+                "message": "Please train a model first"
+            }
+        )
+    
+    try:
+        # Feature extraction
+        features = FEATURE_ENGINEER.extract_match_features(
+            home_team=data.get("home_team"),
+            away_team=data.get("away_team"),
+            odds=data.get("odds")
+        )
+        
+        # Attack and defense strengths
+        home_attack = features.get("home_form_avg_goals_scored", 1.2)
+        away_attack = features.get("away_form_avg_goals_scored", 1.2)
+        home_defense = features.get("home_form_avg_goals_conceded", 1.2)
+        away_defense = features.get("away_form_avg_goals_conceded", 1.2)
+        
+        # BTTS probability calculation
+        # Both teams need good attack
+        btts_score = (
+            (home_attack / 1.5) * 0.25 +
+            (away_attack / 1.5) * 0.25 +
+            (home_defense / 1.5) * 0.25 +
+            (away_defense / 1.5) * 0.25
+        )
+        
+        btts_prob = min(0.85, max(0.15, btts_score))
+        no_btts_prob = 1.0 - btts_prob
+        
+        prediction = btts_prob > 0.5
+        confidence = max(btts_prob, no_btts_prob)
+        
+        return {
+            "home_team": data.get("home_team"),
+            "away_team": data.get("away_team"),
+            "prediction": prediction,
+            "confidence": confidence,
+            "probabilities": {
+                "yes": round(btts_prob, 4),
+                "no": round(no_btts_prob, 4)
+            },
+            "factors": {
+                "home_attack_strength": round(home_attack, 2),
+                "away_attack_strength": round(away_attack, 2),
+                "home_defense_weakness": round(home_defense, 2),
+                "away_defense_weakness": round(away_defense, 2)
+            }
+        }
+        
+    except Exception as e:
+        logging.exception("BTTS prediction failed")
+        return JSONResponse(
+            status_code=500,
+            content={"error": str(e), "message": "BTTS prediction failed"}
+        )
+
+
 @app.post("/api/matches/clear-cache")
 def clear_matches_cache():
     """Clear matches cache"""
@@ -722,6 +858,8 @@ def root():
             "upcoming_matches": "/api/matches/upcoming",
             "predicted_matches": "/api/matches/upcoming/predicted",
             "predict_single": "/api/predict/match [POST]",
+            "predict_over_under": "/api/predict/over-under [POST]",
+            "predict_btts": "/api/predict/btts [POST]",
             "clear_cache": "/api/matches/clear-cache [POST]"
         }
     }
@@ -752,6 +890,7 @@ async def startup_event():
         print(f"   Standard: python train_real_model.py")
     elif PREDICTOR_TYPE == "weighted":
         print(f"📈 Feature Priorities: 75% Odds | 15% H2H | 10% Form")
+        print(f"🎯 Predictions: 1X2 + Over/Under 2.5 + BTTS")
     elif PREDICTOR_TYPE == "standard" and PREDICTOR and hasattr(PREDICTOR, 'best_models_per_class'):
         if PREDICTOR.best_models_per_class:
             print(f"🧠 Smart Selection: ACTIVE")
