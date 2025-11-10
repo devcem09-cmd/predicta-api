@@ -1,5 +1,5 @@
 {
-  "training_date": "2025-11-09T00:57:11.048510",
+  "training_date": "2025-11-11T02:40:00.209499",
   "model_type": "weighted_lightgbm_optimized",
   "feature_weights": {
     "odds": 0.75,
@@ -58,32 +58,32 @@
     "odds_h2h_alignment",
     "odds_form_agreement"
   ],
-  "training_samples": 92264,
-  "test_samples": 23066,
+  "training_samples": 46117,
+  "test_samples": 11530,
   "class_weights": {
     "0": 1.0,
     "1": 1.5,
     "2": 1.0
   },
-  "test_accuracy": 0.6142374057053672,
-  "test_logloss": 0.8313200025918523,
-  "draw_recall": 0.42841328413284135,
-  "draw_precision": 0.48506371422602884,
-  "model_size_mb": 0.7723579406738281,
-  "scaler_size_mb": 0.0013456344604492188,
-  "total_size_mb": 0.7737035751342773,
+  "test_accuracy": 0.7973113616652212,
+  "test_logloss": 0.44614298963755294,
+  "draw_recall": 0.7996204933586337,
+  "draw_precision": 0.6768390619980726,
+  "model_size_mb": 0.7600955963134766,
+  "scaler_size_mb": 0.0013475418090820312,
+  "total_size_mb": 0.7614431381225586,
   "individual_scores": {
     "xgboost": {
-      "test_accuracy": 0.6164484522674065,
-      "test_logloss": 0.8216762635179734,
-      "draw_accuracy": 0.21955719557195572,
-      "model_size_mb": 0.5353250503540039
+      "test_accuracy": 0.796877710320902,
+      "test_logloss": 0.44860497281220235,
+      "draw_accuracy": 0.669449715370019,
+      "model_size_mb": 0.5422248840332031
     },
     "lightgbm": {
-      "test_accuracy": 0.6142374057053672,
-      "test_logloss": 0.8313200025918523,
-      "draw_accuracy": 0.42841328413284135,
-      "model_size_mb": 0.7723579406738281
+      "test_accuracy": 0.7973113616652212,
+      "test_logloss": 0.44614298963755294,
+      "draw_accuracy": 0.7996204933586337,
+      "model_size_mb": 0.7600955963134766
     }
   }
 }
