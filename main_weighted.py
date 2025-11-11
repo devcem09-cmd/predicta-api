@@ -111,26 +111,6 @@ app.add_middleware(
 # Static files
 app.mount("/static", StaticFiles(directory=BASE_DIR / "web"), name="static")
 
-# ---------- API Routes ----------
-@app.get("/")
-async def root():
-    return {
-        "message": "Predicta Weighted API", 
-        "version": "2.0",
-        "model_ready": MODEL_READY,
-        "weighted_system": WEIGHTED_AVAILABLE,
-        "nesine_available": NESINE_AVAILABLE
-    }
-
-@app.get("/health")
-async def health_check():
-    """Health check endpoint for Render"""
-    return {
-        "status": "healthy" if MODEL_READY else "model_missing",
-        "timestamp": datetime.now().isoformat(),
-        "model_ready": MODEL_READY
-    }
-
 # ---------- Lightweight live FE ----------
 class LiveFeatureEngineer:
     """Fallback for when dataset is not available"""
@@ -610,7 +590,7 @@ def predict_match(data: dict):
         )
 
 
-# ⭐ YENİ: Alt/Üst 2.5 Tahmin Endpoint'i
+# ✅ YENİ: Alt/Üst 2.5 Tahmin Endpoint'i
 @app.post("/api/predict/over-under")
 def predict_over_under(data: dict):
     """Predict Over/Under 2.5 goals - IMPROVED VERSION"""
@@ -627,7 +607,7 @@ def predict_over_under(data: dict):
     try:
         home_team = data.get("home_team")
         away_team = data.get("away_team")
-        odds = data.get("odds")
+        odds = data.get("odds", {})
         
         # Feature extraction
         features = FEATURE_ENGINEER.extract_match_features(
@@ -636,140 +616,17 @@ def predict_over_under(data: dict):
             odds=odds
         )
         
-        # Gelişmiş gol beklentisi hesaplama
-        # 1. Form bazlı tahmin
-        home_goals_scored = features.get("home_form_avg_goals_scored", 1.2)
-        away_goals_scored = features.get("away_form_avg_goals_scored", 1.2)
-        home_goals_conceded = features.get("home_form_avg_goals_conceded", 1.2)
-        away_goals_conceded = features.get("away_form_avg_goals_conceded", 1.2)
-        
-        # 2. H2H bazlı tahmin
-        h2h_avg_total = features.get("h2h_avg_total_goals", 2.4)
-        h2h_high_scoring = features.get("h2h_high_scoring", 0.0)
-        
-        # 3. Odds bazlı tahmin
-        ou_odds = odds.get("odds_over_under", {}) if odds else {}
-        over_odds = float(ou_odds.get("over", 1.80)) if ou_odds.get("over") else 1.80
-        under_odds = float(ou_odds.get("under", 2.00)) if ou_odds.get("under") else 2.00
-        
-        # Odds'tan olasılık
-        if over_odds > 0 and under_odds > 0:
-            total_prob = (1/over_odds + 1/under_odds)
-            odds_over_prob = (1/over_odds) / total_prob
-            odds_confidence = abs(over_odds - under_odds) / max(over_odds, under_odds)
-        else:
-            odds_over_prob = 0.50
-            odds_confidence = 0.0
-        
-        # 4. Saldırı vs Savunma analizi
-        expected_home_goals = (home_goals_scored + away_goals_conceded) / 2
-        expected_away_goals = (away_goals_scored + home_goals_conceded) / 2
-        expected_total = expected_home_goals + expected_away_goals
-        
-        # 5. Weighted combination (Odds ağırlıklı)
-        if odds_confidence > 0.3:
-            # Odds'a güven yüksekse daha fazla ağırlık ver
-            final_expected = (
-                expected_total * 0.35 +
-                h2h_avg_total * 0.15 +
-                (odds_over_prob * 5.0) * 0.50  # Odds'tan gelen sinyal
-            )
-        else:
-            # Odds'a güven düşükse form ve H2H'a güven
-            final_expected = (
-                expected_total * 0.60 +
-                h2h_avg_total * 0.40
-            )
-        
-        # 6. Threshold bazlı karar
-        threshold = 2.5
-        if final_expected > 2.75:
-            over_prob = 0.75 + (h2h_high_scoring * 0.10)
-        elif final_expected > 2.5:
-            over_prob = 0.60 + (h2h_high_scoring * 0.05)
-        elif final_expected > 2.25:
-            over_prob = 0.50
-        elif final_expected > 2.0:
-            over_prob = 0.40
-        else:
-            over_prob = 0.30
-        
-        # Odds sinyalini ekle
-        if odds_confidence > 0.3:
-            over_prob = (over_prob * 0.6) + (odds_over_prob * 0.4)
-        
-        # Cap probabilities
-        over_prob = min(0.95, max(0.05, over_prob))
-        under_prob = 1.0 - over_prob
-        
-        prediction = "over" if over_prob > 0.5 else "under"
-        confidence = max(over_prob, under_prob)
-        
-        return {
-            "home_team": home_team,
-            "away_team": away_team,
-            "prediction": prediction,
-            "confidence": round(confidence, 4),
-            "expected_goals": round(final_expected, 2),
-            "probabilities": {
-                "over": round(over_prob, 4),
-                "under": round(under_prob, 4)
-            },
-            "threshold": threshold,
-            "analysis": {
-                "expected_home_goals": round(expected_home_goals, 2),
-                "expected_away_goals": round(expected_away_goals, 2),
-                "h2h_average": round(h2h_avg_total, 2),
-                "odds_signal": "over" if odds_over_prob > 0.5 else "under",
-                "odds_confidence": round(odds_confidence, 4)
-            },
-            "method": "weighted_75_15_10"
-        }
-        
-    except Exception as e:
-        logging.exception("Over/Under prediction failed")
-        return JSONResponse(
-            status_code=500,
-            content={"error": str(e), "message": "Over/Under prediction failed"}
-        )
-
-
-@app.post("/api/predict/btts")
-def predict_btts(data: dict):
-    """Predict Both Teams To Score (Karşılıklı Gol) - IMPROVED VERSION"""
-    
-    if PREDICTOR is None or PREDICTOR_TYPE == "no_model":
-        return JSONResponse(
-            status_code=503,
-            content={
-                "error": "No trained model available",
-                "message": "Please train a model first"
-            }
-        )
-    
-    try:
-        home_team = data.get("home_team")
-        away_team = data.get("away_team")
-        odds = data.get("odds")
-        
-        # Feature extraction
-        features = FEATURE_ENGINEER.extract_match_features(
-            home_team=home_team,
-            away_team=away_team,
-            odds=odds
-        )
-        
-        # Attack and defense strengths
+        # Attack and defense
         home_attack = features.get("home_form_avg_goals_scored", 1.2)
         away_attack = features.get("away_form_avg_goals_scored", 1.2)
         home_defense = features.get("home_form_avg_goals_conceded", 1.2)
         away_defense = features.get("away_form_avg_goals_conceded", 1.2)
         
-        # Clean sheet rates (düşük = daha çok gol yiyor)
+        # Clean sheet rates
         home_clean_sheet = features.get("home_clean_sheet_rate", 0.3)
         away_clean_sheet = features.get("away_clean_sheet_rate", 0.3)
         
-        # H2H BTTS history
+        # H2H BTTS
         h2h_matches = features.get("h2h_matches", 0)
         if h2h_matches > 0:
             h2h_home_goals = features.get("h2h_avg_home_goals", 1.3)
@@ -778,12 +635,11 @@ def predict_btts(data: dict):
         else:
             h2h_btts_rate = 0.5
         
-        # Odds bazlı tahmin
-        btts_odds = odds.get("odds_btts", {}) if odds else {}
+        # Odds bazlı
+        btts_odds = odds.get("odds_btts", {})
         yes_odds = float(btts_odds.get("yes", 1.80)) if btts_odds.get("yes") else 1.80
         no_odds = float(btts_odds.get("no", 2.00)) if btts_odds.get("no") else 2.00
         
-        # Odds'tan olasılık
         if yes_odds > 0 and no_odds > 0:
             total_prob = (1/yes_odds + 1/no_odds)
             odds_yes_prob = (1/yes_odds) / total_prob
@@ -792,24 +648,18 @@ def predict_btts(data: dict):
             odds_yes_prob = 0.50
             odds_confidence = 0.0
         
-        # BTTS probability calculation
-        # Her takımın gol atma olasılığı
+        # BTTS probability
         home_scores_prob = min(0.95, (home_attack / 1.5) * (1 - away_clean_sheet))
         away_scores_prob = min(0.95, (away_attack / 1.5) * (1 - home_clean_sheet))
         
-        # Bağımsız olasılıkları çarp
         base_btts_prob = home_scores_prob * away_scores_prob
-        
-        # H2H history ekle
         btts_prob = (base_btts_prob * 0.60) + (h2h_btts_rate * 0.20)
         
-        # Odds sinyali ekle
         if odds_confidence > 0.3:
             btts_prob = (btts_prob * 0.60) + (odds_yes_prob * 0.40)
         else:
             btts_prob = (btts_prob * 0.80) + (odds_yes_prob * 0.20)
         
-        # Cap probabilities
         btts_prob = min(0.95, max(0.05, btts_prob))
         no_btts_prob = 1.0 - btts_prob
         
@@ -851,9 +701,10 @@ def predict_btts(data: dict):
         )
 
 
+# ✅ YENİ: Validation Endpoint
 @app.post("/api/validate/full-prediction")
 async def validate_full_prediction(data: dict):
-    """3 tahmini birlikte kontrol et - FIXED VERSION"""
+    """3 tahmini birlikte kontrol et - FIXED"""
     
     if PREDICTOR is None or PREDICTOR_TYPE == "no_model":
         return JSONResponse(
@@ -865,24 +716,14 @@ async def validate_full_prediction(data: dict):
         )
     
     try:
-        # Parametreleri al
-        ms_prediction = data.get("ms_prediction")
-        ms_confidence = float(data.get("ms_confidence", 0.0))
-        ou_prediction = data.get("ou_prediction")
-        ou_confidence = float(data.get("ou_confidence", 0.0))
-        btts_prediction = data.get("btts_prediction")
-        btts_confidence = float(data.get("btts_confidence", 0.0))
-        
-        # Validation yap
         result = PREDICTOR.validate_full_prediction_set(
-            ms_prediction=ms_prediction,
-            ms_confidence=ms_confidence,
-            ou_prediction=ou_prediction,
-            ou_confidence=ou_confidence,
-            btts_prediction=btts_prediction,
-            btts_confidence=btts_confidence
+            ms_prediction=data.get("ms_prediction"),
+            ms_confidence=float(data.get("ms_confidence", 0.0)),
+            ou_prediction=data.get("ou_prediction"),
+            ou_confidence=float(data.get("ou_confidence", 0.0)),
+            btts_prediction=data.get("btts_prediction"),
+            btts_confidence=float(data.get("btts_confidence", 0.0))
         )
-        
         return result
         
     except Exception as e:
@@ -892,6 +733,8 @@ async def validate_full_prediction(data: dict):
             content={"error": str(e), "message": "Validation failed"}
         )
 
+
+# ✅ YENİ: Full Match Prediction (1X2 + O/U + BTTS + Validation)
 @app.post("/api/predict/full-match")
 async def predict_full_match(data: dict):
     """Tek maç için 1X2 + Alt/Üst + KG tahminleri + Validasyon"""
@@ -908,7 +751,7 @@ async def predict_full_match(data: dict):
     try:
         home_team = data.get("home_team")
         away_team = data.get("away_team")
-        odds = data.get("odds")
+        odds = data.get("odds", {})
         
         # 1X2 Prediction
         ms_pred = PREDICTOR.predict_match(
@@ -919,21 +762,22 @@ async def predict_full_match(data: dict):
         )
         
         # Over/Under Prediction
-        ou_response = predict_over_under(data)
-        ou_pred = ou_response if isinstance(ou_response, dict) else ou_response.body.decode()
+        ou_data = {"home_team": home_team, "away_team": away_team, "odds": odds}
+        ou_response = predict_over_under(ou_data)
+        ou_pred = ou_response if isinstance(ou_response, dict) else {}
         
         # BTTS Prediction
-        btts_response = predict_btts(data)
-        btts_pred = btts_response if isinstance(btts_response, dict) else btts_response.body.decode()
+        btts_response = predict_btts(ou_data)
+        btts_pred = btts_response if isinstance(btts_response, dict) else {}
         
         # Validation
         validation = PREDICTOR.validate_full_prediction_set(
-            ms_prediction=ms_pred["prediction"],
-            ms_confidence=ms_pred["confidence"],
-            ou_prediction=ou_pred["prediction"],
-            ou_confidence=ou_pred["confidence"],
-            btts_prediction=btts_pred["prediction"],
-            btts_confidence=btts_pred["confidence"]
+            ms_prediction=ms_pred.get("prediction", "X"),
+            ms_confidence=ms_pred.get("confidence", 0.0),
+            ou_prediction=ou_pred.get("prediction", "over"),
+            ou_confidence=ou_pred.get("confidence", 0.0),
+            btts_prediction=btts_pred.get("prediction", False),
+            btts_confidence=btts_pred.get("confidence", 0.0)
         )
         
         return {
@@ -961,6 +805,8 @@ async def predict_full_match(data: dict):
             status_code=500,
             content={"error": str(e), "message": "Full match prediction failed"}
         )
+
+
 @app.post("/api/matches/clear-cache")
 def clear_matches_cache():
     """Clear matches cache"""
@@ -1076,6 +922,8 @@ def root():
             "predict_single": "/api/predict/match [POST]",
             "predict_over_under": "/api/predict/over-under [POST]",
             "predict_btts": "/api/predict/btts [POST]",
+            "validate_predictions": "/api/validate/full-prediction [POST]",
+            "predict_full_match": "/api/predict/full-match [POST]",
             "clear_cache": "/api/matches/clear-cache [POST]"
         }
     }
@@ -1131,4 +979,122 @@ if __name__ == "__main__":
         host="0.0.0.0",  # Tüm network interface'leri dinle
         port=port,        # Render'ın verdiği PORT'u kullan
         log_level="info"
-    )
+    )odds=odds
+        )
+        
+        # Form bazlı tahmin
+        home_goals_scored = features.get("home_form_avg_goals_scored", 1.2)
+        away_goals_scored = features.get("away_form_avg_goals_scored", 1.2)
+        home_goals_conceded = features.get("home_form_avg_goals_conceded", 1.2)
+        away_goals_conceded = features.get("away_form_avg_goals_conceded", 1.2)
+        
+        # H2H bazlı tahmin
+        h2h_avg_total = features.get("h2h_avg_total_goals", 2.4)
+        h2h_high_scoring = features.get("h2h_high_scoring", 0.0)
+        
+        # Odds bazlı tahmin
+        ou_odds = odds.get("odds_over_under", {})
+        over_odds = float(ou_odds.get("over", 1.80)) if ou_odds.get("over") else 1.80
+        under_odds = float(ou_odds.get("under", 2.00)) if ou_odds.get("under") else 2.00
+        
+        # Odds'tan olasılık
+        if over_odds > 0 and under_odds > 0:
+            total_prob = (1/over_odds + 1/under_odds)
+            odds_over_prob = (1/over_odds) / total_prob
+            odds_confidence = abs(over_odds - under_odds) / max(over_odds, under_odds)
+        else:
+            odds_over_prob = 0.50
+            odds_confidence = 0.0
+        
+        # Saldırı vs Savunma analizi
+        expected_home_goals = (home_goals_scored + away_goals_conceded) / 2
+        expected_away_goals = (away_goals_scored + home_goals_conceded) / 2
+        expected_total = expected_home_goals + expected_away_goals
+        
+        # Weighted combination
+        if odds_confidence > 0.3:
+            final_expected = (
+                expected_total * 0.35 +
+                h2h_avg_total * 0.15 +
+                (odds_over_prob * 5.0) * 0.50
+            )
+        else:
+            final_expected = (
+                expected_total * 0.60 +
+                h2h_avg_total * 0.40
+            )
+        
+        # Threshold bazlı karar
+        if final_expected > 2.75:
+            over_prob = 0.75 + (h2h_high_scoring * 0.10)
+        elif final_expected > 2.5:
+            over_prob = 0.60 + (h2h_high_scoring * 0.05)
+        elif final_expected > 2.25:
+            over_prob = 0.50
+        elif final_expected > 2.0:
+            over_prob = 0.40
+        else:
+            over_prob = 0.30
+        
+        # Odds sinyali
+        if odds_confidence > 0.3:
+            over_prob = (over_prob * 0.6) + (odds_over_prob * 0.4)
+        
+        over_prob = min(0.95, max(0.05, over_prob))
+        under_prob = 1.0 - over_prob
+        
+        prediction = "over" if over_prob > 0.5 else "under"
+        confidence = max(over_prob, under_prob)
+        
+        return {
+            "home_team": home_team,
+            "away_team": away_team,
+            "prediction": prediction,
+            "confidence": round(confidence, 4),
+            "expected_goals": round(final_expected, 2),
+            "probabilities": {
+                "over": round(over_prob, 4),
+                "under": round(under_prob, 4)
+            },
+            "threshold": 2.5,
+            "analysis": {
+                "expected_home_goals": round(expected_home_goals, 2),
+                "expected_away_goals": round(expected_away_goals, 2),
+                "h2h_average": round(h2h_avg_total, 2),
+                "odds_signal": "over" if odds_over_prob > 0.5 else "under",
+                "odds_confidence": round(odds_confidence, 4)
+            },
+            "method": "weighted_75_15_10"
+        }
+        
+    except Exception as e:
+        logging.exception("Over/Under prediction failed")
+        return JSONResponse(
+            status_code=500,
+            content={"error": str(e), "message": "Over/Under prediction failed"}
+        )
+
+
+# ✅ YENİ: KG Var/Yok (Both Teams To Score) Tahmin Endpoint'i
+@app.post("/api/predict/btts")
+def predict_btts(data: dict):
+    """Predict Both Teams To Score - IMPROVED VERSION"""
+    
+    if PREDICTOR is None or PREDICTOR_TYPE == "no_model":
+        return JSONResponse(
+            status_code=503,
+            content={
+                "error": "No trained model available",
+                "message": "Please train a model first"
+            }
+        )
+    
+    try:
+        home_team = data.get("home_team")
+        away_team = data.get("away_team")
+        odds = data.get("odds", {})
+        
+        # Feature extraction
+        features = FEATURE_ENGINEER.extract_match_features(
+            home_team=home_team,
+            away_team=away_team,
