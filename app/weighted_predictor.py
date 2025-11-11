@@ -421,13 +421,29 @@ class WeightedPredictor:
             "average_confidence": np.mean([p["confidence"] for p in self.predictions_log]),
             "smart_selection_enabled": self.use_smart_selection
         }
-    def validate_full_prediction_set(self,
-                                ms_prediction: str,
-                                ms_confidence: float,
-                                ou_prediction: str,
-                                ou_confidence: float,
-                                btts_prediction: bool,
-                                btts_confidence: float) -> Dict[str, Any]:
+    def validate_full_prediction_set(self, ms_prediction, ms_confidence, ou_prediction, 
+                                ou_confidence, btts_prediction, btts_confidence):
+    """3 tahmini kontrol et"""
+    warnings = []
+    is_valid = True
+    
+    # MS1/MS2 + Alt 2.5 + KG Var = İMKANSIZ
+    if ms_prediction in ['1', '2'] and ou_prediction == 'under' and btts_prediction:
+        is_valid = False
+        warnings.append({
+            "severity": "CRITICAL",
+            "message": "MS1/2 + Alt 2.5 + KG Var = İmkansız! (Sadece 1-1 olur)"
+        })
+    
+    return {
+        "is_valid": is_valid,
+        "warnings": warnings,
+        "original_predictions": {
+            "ms": ms_prediction,
+            "ou": ou_prediction,
+            "btts": btts_prediction
+        }
+    }
     """
     3 tahmini birlikte doğrula ve mantık kontrolü yap
     
