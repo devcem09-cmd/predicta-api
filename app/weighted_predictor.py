@@ -423,125 +423,190 @@ class WeightedPredictor:
         }
     def validate_full_prediction_set(self, ms_prediction, ms_confidence, ou_prediction, 
                                 ou_confidence, btts_prediction, btts_confidence):
-    """3 tahmini kontrol et"""
+    """
+    3 tahmini birlikte kontrol et ve mantık hatalarını yakala
+    
+    Args:
+        ms_prediction: 1X2 tahmini ('1', 'X', '2')
+        ms_confidence: 1X2 güven skoru (0.0-1.0)
+        ou_prediction: Over/Under tahmini ('over', 'under')
+        ou_confidence: O/U güven skoru (0.0-1.0)
+        btts_prediction: KG Var/Yok (True/False)
+        btts_confidence: BTTS güven skoru (0.0-1.0)
+    
+    Returns:
+        dict: Validasyon sonucu, uyarılar ve öneriler
+    """
     warnings = []
+    suggestions = []
     is_valid = True
     
-    # MS1/MS2 + Alt 2.5 + KG Var = İMKANSIZ
+    # ================================
+    # KURAL 1: MS1/MS2 + Alt 2.5 + KG Var = MATEMATİKSEL İMKANSIZLIK
+    # ================================
+    # Alt 2.5 = Max 2 gol
+    # KG Var = Her iki takım gol atmalı (min 1-1)
+    # 1-1 = Beraberlik (MS1 veya MS2 olamaz!)
+    
     if ms_prediction in ['1', '2'] and ou_prediction == 'under' and btts_prediction:
         is_valid = False
         warnings.append({
             "severity": "CRITICAL",
-            "message": "MS1/2 + Alt 2.5 + KG Var = İmkansız! (Sadece 1-1 olur)"
+            "type": "mathematical_impossibility",
+            "message": f"❌ {ms_prediction} + Alt 2.5 + KG Var = Matematiksel olarak IMKANSIZ!",
+            "explanation": (
+                "Alt 2.5 golde maksimum 2 gol olabilir. "
+                "KG Var ise her iki takımın gol atması gerekir. "
+                "Bu kombinasyon sadece 1-1 skorunu verir ve 1-1 beraberliktir!"
+            ),
+            "only_possible_score": "1-1 (Beraberlik)",
+            "your_prediction": f"{ms_prediction} (Kazanan var)",
+            "conflict": "1-1 skoru beraberliktir, kazanan olamaz"
         })
-    
-    return {
-        "is_valid": is_valid,
-        "warnings": warnings,
-        "original_predictions": {
-            "ms": ms_prediction,
-            "ou": ou_prediction,
-            "btts": btts_prediction
-        }
-    }
-    """
-    3 tahmini birlikte doğrula ve mantık kontrolü yap
-    
-    Args:
-        ms_prediction: 1X2 tahmini ('1', 'X', '2')
-        ms_confidence: 1X2 güven skoru
-        ou_prediction: Alt/Üst tahmini ('over', 'under')
-        ou_confidence: Alt/Üst güven skoru
-        btts_prediction: KG Var/Yok (True/False)
-        btts_confidence: KG güven skoru
-    
-    Returns:
-        Validasyon sonucu ve uyarılar
-    """
-    
-    is_valid, warnings = self._validate_prediction_logic(
-        ms_prediction=ms_prediction,
-        ms_confidence=ms_confidence,
-        ou_prediction=ou_prediction,
-        ou_confidence=ou_confidence,
-        btts_prediction=btts_prediction,
-        btts_confidence=btts_confidence
-    )
-    
-    # Otomatik düzeltme önerileri
-    suggestions = []
-    adjusted_predictions = {
-        "ms": ms_prediction,
-        "ou": ou_prediction,
-        "btts": btts_prediction
-    }
-    
-    # KURAL 1: MS1/MS2 + Alt 2.5 + KG Var = İMKANSIZ
-    if ms_prediction in ['1', '2'] and ou_prediction == 'under' and btts_prediction == True:
+        
         suggestions.append({
             "type": "critical_fix",
             "original": f"{ms_prediction} + Alt 2.5 + KG Var",
-            "issue": "Matematiksel olarak imkansız (sadece 1-1 olabilir)",
-            "options": [
+            "recommended_fixes": [
                 {
-                    "fix": "MSX + Alt 2.5 + KG Var",
-                    "reason": "Alt 2.5 + KG Var → sadece 1-1 (beraberlik)",
+                    "option": 1,
+                    "prediction": "MSX + Alt 2.5 + KG Var",
+                    "reason": "1-1 skoru beraberliktir",
+                    "confidence": "Yüksek",
                     "adjusted": {"ms": "X", "ou": "under", "btts": True}
                 },
                 {
-                    "fix": f"{ms_prediction} + Alt 2.5 + KG Yok",
-                    "reason": f"{ms_prediction} kazanır ama bir takım gol atmaz",
+                    "option": 2,
+                    "prediction": f"{ms_prediction} + Alt 2.5 + KG Yok",
+                    "reason": f"{ms_prediction} kazanır ama bir takım gol atmaz (1-0, 2-0)",
+                    "confidence": "Orta",
                     "adjusted": {"ms": ms_prediction, "ou": "under", "btts": False}
                 },
                 {
-                    "fix": f"{ms_prediction} + Üst 2.5 + KG Var",
-                    "reason": f"{ms_prediction} kazanır ve skorlu maç",
+                    "option": 3,
+                    "prediction": f"{ms_prediction} + Üst 2.5 + KG Var",
+                    "reason": f"{ms_prediction} kazanır ve skorlu maç (2-1, 3-1, 3-2)",
+                    "confidence": "Orta",
                     "adjusted": {"ms": ms_prediction, "ou": "over", "btts": True}
                 }
-            ]
+            ],
+            "auto_recommendation": "MSX" if ms_confidence < 0.6 else f"{ms_prediction} + KG Yok"
         })
-        
-        # En yüksek güvenli seçeneği öner
-        if ms_confidence > 0.6:
-            adjusted_predictions = {"ms": ms_prediction, "ou": "under", "btts": False}
-        else:
-            adjusted_predictions = {"ms": "X", "ou": "under", "btts": True}
     
-    # KURAL 2: Üst 2.5 + KG Yok = ZOR (en az biri 3+ atmalı)
-    if ou_prediction == 'over' and btts_prediction == False:
+    # ================================
+    # KURAL 2: Üst 2.5 + KG Yok = ZOR (Tek takım 3+ atmalı)
+    # ================================
+    # En az 3 gol + Bir takım gol atmıyor = 3-0, 4-0, 0-3, 0-4 gibi
+    # Bu skorlar nadirdir (~10-15%)
+    
+    if ou_prediction == 'over' and not btts_prediction:
         warnings.append({
             "severity": "WARNING",
             "type": "unlikely_combination",
-            "message": "⚠️ Üst 2.5 + KG Yok kombinasyonu zor",
-            "explanation": "3+ gol için bir takım tek başına 3+ atmalı (3-0, 4-0 gibi)",
+            "message": "⚠️ Üst 2.5 + KG Yok = Zor kombinasyon",
+            "explanation": (
+                "3+ gol için bir takım tek başına en az 3 gol atmalı. "
+                "Bu tip skorlar nadirdir."
+            ),
             "typical_scores": ["3-0", "4-0", "0-3", "0-4", "4-1", "5-0"],
-            "probability": "Düşük (~15%)"
+            "probability": "Düşük (~15%)",
+            "risk_level": "Orta-Yüksek"
+        })
+        
+        suggestions.append({
+            "type": "risk_warning",
+            "message": "Bu kombinasyon risklidir",
+            "safer_alternatives": [
+                "Üst 2.5 + KG Var (Her iki takım da skor)",
+                "Alt 2.5 + KG Yok (Savunmalı maç)"
+            ]
         })
     
-    # KURAL 3: MSX + Üst 2.5 = NADIR (yüksek skorlu beraberlik)
+    # ================================
+    # KURAL 3: MSX + Üst 2.5 = NADİR (Yüksek skorlu beraberlik)
+    # ================================
+    # Beraberlik + 3+ gol = 2-2, 3-3, 4-4
+    # Bu skorlar çok nadirdir (~5-8%)
+    
     if ms_prediction == 'X' and ou_prediction == 'over':
         warnings.append({
-            "severity": "WARNING", 
+            "severity": "WARNING",
             "type": "rare_combination",
-            "message": "⚠️ MSX + Üst 2.5 = Nadir kombinasyon",
-            "explanation": "Yüksek skorlu beraberlik (2-2, 3-3)",
+            "message": "⚠️ MSX + Üst 2.5 = Çok nadir kombinasyon",
+            "explanation": (
+                "Yüksek skorlu beraberlik (2-2, 3-3) çok az görülür. "
+                "Eğer çok gol atılırsa genelde kazanan olur."
+            ),
             "typical_scores": ["2-2", "3-3", "4-4"],
-            "probability": "Çok düşük (~8%)"
+            "probability": "Çok düşük (~8%)",
+            "risk_level": "Yüksek"
         })
     
-    # KURAL 4: Alt 2.5 + KG Var = TEK SKOR (1-1)
-    if ou_prediction == 'under' and btts_prediction == True:
+    # ================================
+    # KURAL 4: Alt 2.5 + KG Var = TEK SKOR (1-1 garantili)
+    # ================================
+    # Max 2 gol + Her ikisi gol atıyor = Sadece 1-1 olabilir
+    
+    if ou_prediction == 'under' and btts_prediction:
         warnings.append({
             "severity": "INFO",
             "type": "single_score_outcome",
-            "message": "ℹ️ Alt 2.5 + KG Var = Sadece 1-1 skoru",
-            "explanation": "Bu kombinasyon matematiksel olarak sadece 1-1'i verir",
+            "message": "ℹ️ Alt 2.5 + KG Var = Garantili 1-1 skoru",
+            "explanation": (
+                "Bu kombinasyon matematiksel olarak sadece 1-1 skorunu verir. "
+                "MS tahmininiz 'X' (beraberlik) olmalıdır."
+            ),
             "guaranteed_score": "1-1",
-            "ms_must_be": "X (Beraberlik)"
+            "ms_must_be": "X",
+            "your_ms": ms_prediction,
+            "ms_correct": ms_prediction == 'X'
+        })
+        
+        if ms_prediction != 'X':
+            warnings.append({
+                "severity": "ERROR",
+                "message": f"❌ Alt 2.5 + KG Var derken MS tahmini '{ms_prediction}' olamaz, 'X' olmalı!"
+            })
+    
+    # ================================
+    # KURAL 5: Düşük güven kombinasyonları
+    # ================================
+    avg_confidence = (ms_confidence + ou_confidence + btts_confidence) / 3
+    
+    if avg_confidence < 0.5:
+        warnings.append({
+            "severity": "INFO",
+            "type": "low_confidence",
+            "message": f"ℹ️ Ortalama güven düşük ({avg_confidence:.2%})",
+            "explanation": "Tahminleriniz düşük güvenle yapılmış, riskli olabilir.",
+            "recommendation": "Daha güvenli tahminler tercih edin"
         })
     
-    result = {
+    # ================================
+    # KURAL 6: Çelişkili güven seviyeleri
+    # ================================
+    confidence_spread = max(ms_confidence, ou_confidence, btts_confidence) - \
+                       min(ms_confidence, ou_confidence, btts_confidence)
+    
+    if confidence_spread > 0.4:
+        warnings.append({
+            "severity": "INFO",
+            "type": "confidence_mismatch",
+            "message": "ℹ️ Güven seviyeleri arasında büyük fark var",
+            "explanation": (
+                f"En yüksek: {max(ms_confidence, ou_confidence, btts_confidence):.2%}, "
+                f"En düşük: {min(ms_confidence, ou_confidence, btts_confidence):.2%}"
+            ),
+            "recommendation": "Düşük güvenli tahmini gözden geçirin"
+        })
+    
+    # ================================
+    # Sonuç
+    # ================================
+    return {
         "is_valid": is_valid,
+        "warnings": warnings,
+        "suggestions": suggestions,
         "original_predictions": {
             "ms": ms_prediction,
             "ou": ou_prediction,
@@ -550,16 +615,58 @@ class WeightedPredictor:
         "confidences": {
             "ms": ms_confidence,
             "ou": ou_confidence,
-            "btts": btts_confidence
+            "btts": btts_confidence,
+            "average": round(avg_confidence, 4)
         },
-        "warnings": warnings,
-        "suggestions": suggestions,
-        "auto_adjusted": adjusted_predictions if not is_valid else None,
         "validation_summary": {
             "total_warnings": len(warnings),
             "critical_issues": len([w for w in warnings if w.get("severity") == "CRITICAL"]),
-            "recommendation": "Tahminleri gözden geçirin" if not is_valid else "Tahminler tutarlı"
-        }
+            "warnings_count": len([w for w in warnings if w.get("severity") == "WARNING"]),
+            "info_count": len([w for w in warnings if w.get("severity") == "INFO"]),
+            "overall_risk": "HIGH" if not is_valid else "MEDIUM" if len(warnings) > 2 else "LOW",
+            "recommendation": (
+                "❌ TAHMİNLERİ DÜZELT!" if not is_valid else
+                "⚠️ Riskli kombinasyon" if len(warnings) > 2 else
+                "✅ Tahminler tutarlı"
+            )
+        },
+        "possible_scores": self._get_possible_scores(ms_prediction, ou_prediction, btts_prediction)
     }
+
+
+def _get_possible_scores(self, ms_prediction, ou_prediction, btts_prediction):
+    """Olası skorları hesapla"""
+    scores = []
     
-    return result  
+    # Alt 2.5 + KG Var = Sadece 1-1
+    if ou_prediction == 'under' and btts_prediction:
+        return ["1-1"]
+    
+    # Alt 2.5 + KG Yok
+    if ou_prediction == 'under' and not btts_prediction:
+        if ms_prediction == '1':
+            scores = ["1-0", "2-0"]
+        elif ms_prediction == '2':
+            scores = ["0-1", "0-2"]
+        else:
+            scores = ["0-0"]
+    
+    # Üst 2.5 + KG Var
+    elif ou_prediction == 'over' and btts_prediction:
+        if ms_prediction == '1':
+            scores = ["2-1", "3-1", "3-2", "4-1", "4-2"]
+        elif ms_prediction == '2':
+            scores = ["1-2", "1-3", "2-3", "1-4", "2-4"]
+        else:
+            scores = ["2-2", "3-3"]
+    
+    # Üst 2.5 + KG Yok
+    elif ou_prediction == 'over' and not btts_prediction:
+        if ms_prediction == '1':
+            scores = ["3-0", "4-0", "5-0"]
+        elif ms_prediction == '2':
+            scores = ["0-3", "0-4", "0-5"]
+        else:
+            scores = []
+    
+    return scores if scores else ["Belirsiz"]
