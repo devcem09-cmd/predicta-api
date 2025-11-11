@@ -37,7 +37,6 @@
             position: relative;
         }
 
-        /* Animated Background */
         .animated-bg {
             position: fixed;
             top: 0;
@@ -77,13 +76,11 @@
             100% { left: 100%; }
         }
 
-        /* Main Container */
         .main-wrapper {
             position: relative;
             z-index: 1;
         }
 
-        /* Premium Header */
         .premium-header {
             background: linear-gradient(135deg, rgba(10, 14, 39, 0.95), rgba(26, 31, 58, 0.95));
             backdrop-filter: blur(20px);
@@ -171,7 +168,6 @@
             transform: translateY(-2px);
         }
 
-        /* Logo Section */
         .logo-section {
             display: flex;
             align-items: center;
@@ -242,7 +238,6 @@
             opacity: 0.9;
         }
 
-        /* Control Panel */
         .control-panel {
             padding: 20px 30px;
             background: rgba(26, 31, 58, 0.5);
@@ -307,7 +302,6 @@
             background: linear-gradient(135deg, var(--success), #059669);
         }
 
-        /* Smart Filter Tabs */
         .smart-tabs {
             display: flex;
             gap: 5px;
@@ -372,14 +366,22 @@
             width: 100%;
         }
 
-        /* Container */
+        .tab-btn:disabled {
+            opacity: 0.5 !important;
+            cursor: not-allowed !important;
+            pointer-events: none;
+        }
+
+        .tab-btn:disabled::after {
+            display: none;
+        }
+
         .premium-container {
             max-width: 1600px;
             margin: 0 auto;
             padding: 30px;
         }
 
-        /* Stats Dashboard */
         .stats-dashboard {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
@@ -434,7 +436,6 @@
             letter-spacing: 1px;
         }
 
-        /* Premium Match Card */
         .premium-match-card {
             background: linear-gradient(135deg, rgba(26, 31, 58, 0.95), rgba(42, 47, 74, 0.95));
             backdrop-filter: blur(20px);
@@ -525,7 +526,6 @@
             box-shadow: 0 0 15px rgba(102, 126, 234, 0.3);
         }
 
-        /* Prediction Panel */
         .prediction-panel {
             background: rgba(10, 14, 39, 0.6);
             border: 1px solid var(--border);
@@ -609,7 +609,6 @@
             color: var(--success);
         }
 
-        /* Multi Predictions Grid */
         .multi-predictions {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
@@ -668,7 +667,6 @@
             text-align: center;
         }
 
-        /* Expandable Details */
         .match-details-premium {
             max-height: 0;
             opacity: 0;
@@ -722,7 +720,6 @@
             color: var(--text);
         }
 
-        /* Loading State */
         .premium-loading {
             text-align: center;
             padding: 80px 20px;
@@ -769,7 +766,6 @@
             color: var(--text-muted);
         }
 
-        /* Alert Box */
         .premium-alert {
             background: linear-gradient(135deg, rgba(239, 68, 68, 0.2), rgba(220, 38, 38, 0.2));
             border: 2px solid var(--danger);
@@ -791,7 +787,29 @@
             border-color: var(--primary);
         }
 
-        /* Responsive Design */
+        @keyframes warningPulse {
+            0%, 100% { 
+                box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7);
+            }
+            50% { 
+                box-shadow: 0 0 0 10px rgba(239, 68, 68, 0);
+            }
+        }
+
+        .logic-warning-badge {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: var(--danger);
+            color: white;
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 11px;
+            font-weight: 700;
+            animation: warningPulse 2s infinite;
+            z-index: 10;
+        }
+
         @media (max-width: 1024px) {
             .match-header-premium {
                 grid-template-columns: 1fr;
@@ -831,7 +849,6 @@
             }
         }
 
-        /* Scroll Effects */
         html {
             scroll-behavior: smooth;
         }
@@ -843,30 +860,6 @@
         @keyframes fadeIn {
             from { opacity: 0; transform: translateY(20px); }
             to { opacity: 1; transform: translateY(0); }
-        }
-
-        /* Logic Warning Animation */
-        @keyframes warningPulse {
-            0%, 100% { 
-                box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7);
-            }
-            50% { 
-                box-shadow: 0 0 0 10px rgba(239, 68, 68, 0);
-            }
-        }
-
-        .logic-warning-badge {
-            position: absolute;
-            top: 10px;
-            right: 10px;
-            background: var(--danger);
-            color: white;
-            padding: 6px 12px;
-            border-radius: 20px;
-            font-size: 11px;
-            font-weight: 700;
-            animation: warningPulse 2s infinite;
-            z-index: 10;
         }
     </style>
 </head>
@@ -910,7 +903,7 @@
                     🔌 API'yi Uyandır
                 </button>
                 <button class="premium-btn" id="fetch-matches-btn" onclick="fetchMatches()">
-                    📥 Maçları Yükle
+                    🔥 Maçları Yükle
                 </button>
                 <button class="premium-btn" id="predict-all-btn" onclick="predictAllMatches()" disabled>
                     🎯 Tüm Maçları Tahmin Et
@@ -1036,6 +1029,15 @@
                     displayMatches(allMatches);
                     document.getElementById('predict-all-btn').disabled = false;
                     updateLastUpdate();
+                    
+                    // Filtreleme butonlarını aktif et
+                    const tabButtons = document.querySelectorAll('.tab-btn');
+                    tabButtons.forEach(btn => {
+                        btn.style.opacity = '1';
+                        btn.style.cursor = 'pointer';
+                        btn.disabled = false;
+                    });
+                    
                     showSuccess(`✅ ${allMatches.length} maç başarıyla yüklendi!`);
                 } else {
                     showError('Maçlar yüklenemedi: ' + (data.error || 'Bilinmeyen hata'));
@@ -1125,7 +1127,6 @@
                     
                     predictions[match.match_id] = prediction;
                     
-                    // Alt/Üst ve KG tahminleri alındıysa, tam validasyon yap
                     if (prediction.prediction && 
                         prediction.over_under_prediction?.prediction && 
                         prediction.btts_prediction?.prediction !== undefined) {
@@ -1157,7 +1158,6 @@
                     
                     successCount++;
                     
-                    // Mantık validasyonu kontrolü
                     if (prediction.logic_validation && !prediction.logic_validation.is_valid) {
                         logicWarnings++;
                     }
@@ -1173,6 +1173,14 @@
             predictBtn.disabled = false;
             predictBtn.innerHTML = '🎯 Tüm Maçları Tahmin Et';
             updatePredictionCount();
+            
+            // Tahminler tamamlandı - tüm butonları aktif tut
+            const tabButtons = document.querySelectorAll('.tab-btn');
+            tabButtons.forEach(btn => {
+                btn.style.opacity = '1';
+                btn.style.cursor = 'pointer';
+                btn.disabled = false;
+            });
             
             let message = `${errorCount > 0 ? '⚠️' : '✅'} ${successCount}/${allMatches.length} maç tahmin edildi!`;
             if (logicWarnings > 0) {
@@ -1257,142 +1265,151 @@
         }
 
         function createPremiumMatchCard(match, prediction) {
-    const card = document.createElement('div');
-    card.className = 'premium-match-card';
-    
-    const hasPrediction = prediction && prediction.prediction;
-    const confidence = hasPrediction ? (prediction.confidence * 100).toFixed(0) : 0;
-    const pred = hasPrediction ? prediction.prediction : '?';
-    
-    const overUnder = prediction?.over_under_prediction || {};
-    const btts = prediction?.btts_prediction || {};
-    
-    // Mantık validasyonu kontrolü
-    const hasLogicWarnings = prediction?.logic_validation && !prediction.logic_validation.is_valid;
-    const logicWarnings = prediction?.logic_validation?.warnings || [];
-    const criticalWarning = logicWarnings.find(w => w.severity === 'CRITICAL');
-    
-    // Kart stilini uyarıya göre değiştir
-    if (hasLogicWarnings) {
-        card.style.borderLeftColor = 'var(--danger)';
-        card.style.borderLeftWidth = '5px';
-    }
-    
-    card.innerHTML = `
-        ${hasLogicWarnings ? `
-            <div class="logic-warning-badge">
-                ⚠️ MANTIK HATASI
-            </div>
-        ` : ''}
-        
-        <div class="match-header-premium">
-            <div class="team-info">
-                <div class="match-teams-premium">
-                    ${match.home_team} <span class="vs-separator">VS</span> ${match.away_team}
-                </div>
-                <div class="match-meta-premium">
-                    <span class="meta-badge">🏆 ${match.league_name || match.league_code}</span>
-                    <span class="meta-badge">📅 ${new Date(match.date).toLocaleDateString('tr-TR')}</span>
-                    <span class="meta-badge weighted-badge-premium">⚙️ WEIGHTED AI</span>
-                </div>
-            </div>
+            const card = document.createElement('div');
+            card.className = 'premium-match-card';
             
-            <div class="prediction-panel">
-                <div class="prediction-header">⚽ Maç Sonucu</div>
-                <div class="prediction-grid">
-                    <div class="pred-option ${pred === '1' ? 'selected' : ''}">1</div>
-                    <div class="pred-option ${pred === 'X' ? 'selected' : ''}">X</div>
-                    <div class="pred-option ${pred === '2' ? 'selected' : ''}">2</div>
-                </div>
-                ${hasPrediction ? `
-                    <div class="confidence-meter">
-                        <span class="confidence-label">Güven</span>
-                        <span class="confidence-value">${confidence}%</span>
-                    </div>
-                ` : `
-                    <div style="text-align: center; color: var(--text-muted); padding: 15px;">
-                        Tahmin bekleniyor...
-                    </div>
-                `}
-            </div>
-        </div>
-        
-        ${hasLogicWarnings ? `
-            <div style="background: rgba(239, 68, 68, 0.1); border: 1px solid var(--danger); border-radius: 8px; padding: 10px; margin: 10px 0;">
-                <div style="color: var(--danger); font-weight: bold; font-size: 12px;">
-                    ⚠️ MANTIK UYARISI: ${logicWarnings[0]?.message || 'Geçersiz tahmin kombinasyonu'}
-                </div>
-            </div>
-        ` : ''}
-        
-        ${hasPrediction ? `
-            <div class="multi-predictions">
-                ${overUnder.prediction ? `
-                    <div class="mini-pred-box">
-                        <div class="mini-pred-label">📊 Alt/Üst 2.5</div>
-                        <div class="mini-pred-options">
-                            <div class="mini-option ${overUnder.prediction === 'over' ? 'selected' : ''}">ÜST</div>
-                            <div class="mini-option ${overUnder.prediction === 'under' ? 'selected' : ''}">ALT</div>
-                        </div>
-                        <div class="mini-confidence">Güven: ${(overUnder.confidence * 100).toFixed(0)}%</div>
+            const hasPrediction = prediction && prediction.prediction;
+            const confidence = hasPrediction ? (prediction.confidence * 100).toFixed(0) : 0;
+            const pred = hasPrediction ? prediction.prediction : '?';
+            
+            const overUnder = prediction?.over_under_prediction || {};
+            const btts = prediction?.btts_prediction || {};
+            
+            const hasLogicWarnings = prediction?.logic_validation && !prediction.logic_validation.is_valid;
+            const logicWarnings = prediction?.logic_validation?.warnings || [];
+            
+            if (hasLogicWarnings) {
+                card.style.borderLeftColor = 'var(--danger)';
+                card.style.borderLeftWidth = '5px';
+            }
+            
+            card.innerHTML = `
+                ${hasLogicWarnings ? `
+                    <div class="logic-warning-badge">
+                        ⚠️ MANTIK HATASI
                     </div>
                 ` : ''}
                 
-                ${btts.prediction !== undefined ? `
-                    <div class="mini-pred-box">
-                        <div class="mini-pred-label">🎯 KG Var/Yok</div>
-                        <div class="mini-pred-options">
-                            <div class="mini-option ${btts.prediction === true ? 'selected' : ''}">VAR</div>
-                            <div class="mini-option ${btts.prediction === false ? 'selected' : ''}">YOK</div>
+                <div class="match-header-premium">
+                    <div class="team-info">
+                        <div class="match-teams-premium">
+                            ${match.home_team} <span class="vs-separator">VS</span> ${match.away_team}
                         </div>
-                        <div class="mini-confidence">Güven: ${(btts.confidence * 100).toFixed(0)}%</div>
+                        <div class="match-meta-premium">
+                            <span class="meta-badge">🏆 ${match.league_name || match.league_code}</span>
+                            <span class="meta-badge">📅 ${new Date(match.date).toLocaleDateString('tr-TR')}</span>
+                            <span class="meta-badge weighted-badge-premium">⚙️ WEIGHTED AI</span>
+                        </div>
+                    </div>
+                    
+                    <div class="prediction-panel">
+                        <div class="prediction-header">⚽ Maç Sonucu</div>
+                        <div class="prediction-grid">
+                            <div class="pred-option ${pred === '1' ? 'selected' : ''}">1</div>
+                            <div class="pred-option ${pred === 'X' ? 'selected' : ''}">X</div>
+                            <div class="pred-option ${pred === '2' ? 'selected' : ''}">2</div>
+                        </div>
+                        ${hasPrediction ? `
+                            <div class="confidence-meter">
+                                <span class="confidence-label">Güven</span>
+                                <span class="confidence-value">${confidence}%</span>
+                            </div>
+                        ` : `
+                            <div style="text-align: center; color: var(--text-muted); padding: 15px;">
+                                Tahmin bekleniyor...
+                            </div>
+                        `}
+                    </div>
+                </div>
+                
+                ${hasLogicWarnings ? `
+                    <div style="background: rgba(239, 68, 68, 0.1); border: 1px solid var(--danger); border-radius: 8px; padding: 10px; margin: 10px 0;">
+                        <div style="color: var(--danger); font-weight: bold; font-size: 12px;">
+                            ⚠️ MANTIK UYARISI: ${logicWarnings[0]?.message || 'Geçersiz tahmin kombinasyonu'}
+                        </div>
                     </div>
                 ` : ''}
-            </div>
-            
-            <div class="match-details-premium">
-                <div class="detail-grid">
-                    <div class="detail-item">
-                        <div class="detail-item-label">🎯 Tahmin</div>
-                        <div class="detail-item-value">${pred === '1' ? 'Ev Sahibi' : pred === 'X' ? 'Beraberlik' : 'Deplasman'}</div>
-                    </div>
-                    <div class="detail-item">
-                        <div class="detail-item-label">💪 Güven</div>
-                        <div class="detail-item-value">${confidence}%</div>
-                    </div>
-                    <div class="detail-item">
-                        <div class="detail-item-label">📊 Olasılıklar</div>
-                        <div class="detail-item-value">
-                            1: ${(prediction.probabilities.home_win * 100).toFixed(1)}% | 
-                            X: ${(prediction.probabilities.draw * 100).toFixed(1)}% | 
-                            2: ${(prediction.probabilities.away_win * 100).toFixed(1)}%
-                        </div>
-                    </div>
-                    ${match.odds ? `
-                        <div class="detail-item">
-                            <div class="detail-item-label">💰 Oranlar</div>
-                            <div class="detail-item-value">
-                                1: ${match.odds['1']} | X: ${match.odds['X']} | 2: ${match.odds['2']}
+                
+                ${hasPrediction ? `
+                    <div class="multi-predictions">
+                        ${overUnder.prediction ? `
+                            <div class="mini-pred-box">
+                                <div class="mini-pred-label">📊 Alt/Üst 2.5</div>
+                                <div class="mini-pred-options">
+                                    <div class="mini-option ${overUnder.prediction === 'over' ? 'selected' : ''}">ÜST</div>
+                                    <div class="mini-option ${overUnder.prediction === 'under' ? 'selected' : ''}">ALT</div>
+                                </div>
+                                <div class="mini-confidence">Güven: ${(overUnder.confidence * 100).toFixed(0)}%</div>
                             </div>
+                        ` : ''}
+                        
+                        ${btts.prediction !== undefined ? `
+                            <div class="mini-pred-box">
+                                <div class="mini-pred-label">🎯 KG Var/Yok</div>
+                                <div class="mini-pred-options">
+                                    <div class="mini-option ${btts.prediction === true ? 'selected' : ''}">VAR</div>
+                                    <div class="mini-option ${btts.prediction === false ? 'selected' : ''}">YOK</div>
+                                </div>
+                                <div class="mini-confidence">Güven: ${(btts.confidence * 100).toFixed(0)}%</div>
+                            </div>
+                        ` : ''}
+                    </div>
+                    
+                    <div class="match-details-premium">
+                        <div class="detail-grid">
+                            <div class="detail-item">
+                                <div class="detail-item-label">🎯 Tahmin</div>
+                                <div class="detail-item-value">${pred === '1' ? 'Ev Sahibi' : pred === 'X' ? 'Beraberlik' : 'Deplasman'}</div>
+                            </div>
+                            <div class="detail-item">
+                                <div class="detail-item-label">💪 Güven</div>
+                                <div class="detail-item-value">${confidence}%</div>
+                            </div>
+                            <div class="detail-item">
+                                <div class="detail-item-label">📊 Olasılıklar</div>
+                                <div class="detail-item-value">
+                                    1: ${(prediction.probabilities.home_win * 100).toFixed(1)}% | 
+                                    X: ${(prediction.probabilities.draw * 100).toFixed(1)}% | 
+                                    2: ${(prediction.probabilities.away_win * 100).toFixed(1)}%
+                                </div>
+                            </div>
+                            ${match.odds ? `
+                                <div class="detail-item">
+                                    <div class="detail-item-label">💰 Oranlar</div>
+                                    <div class="detail-item-value">
+                                        1: ${match.odds['1']} | X: ${match.odds['X']} | 2: ${match.odds['2']}
+                                    </div>
+                                </div>
+                            ` : ''}
                         </div>
-                    ` : ''}
-                </div>
-            </div>
-        ` : ''}
-    `;
-    
-    card.onclick = () => {
-        const details = card.querySelector('.match-details-premium');
-        if (details) details.classList.toggle('expanded');
-    };
-    
-    return card;
-}
+                    </div>
+                ` : ''}
+            `;
+            
+            card.onclick = () => {
+                const details = card.querySelector('.match-details-premium');
+                if (details) details.classList.toggle('expanded');
+            };
+            
+            return card;
+        }
+
         function filterMatches(type) {
             currentFilter = type;
             
             document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
             event.target.classList.add('active');
+            
+            if (!allMatches || allMatches.length === 0) {
+                const container = document.getElementById('match-container');
+                container.innerHTML = `
+                    <div class="premium-alert warning">
+                        ⚠️ Henüz maç yüklenmedi!<br><br>
+                        Lütfen önce <strong>"Maçları Yükle"</strong> butonuna tıklayın.
+                    </div>
+                `;
+                return;
+            }
             
             let filtered = allMatches;
             
@@ -1412,6 +1429,33 @@
                     }
                     return false;
                 });
+                
+                if (filtered.length === 0) {
+                    const container = document.getElementById('match-container');
+                    const filterNames = {
+                        'high': 'Yüksek Güven (≥70%)',
+                        '1': 'Ev Sahibi Kazanır',
+                        'X': 'Beraberlik',
+                        '2': 'Deplasman Kazanır',
+                        'over': 'Üst 2.5',
+                        'under': 'Alt 2.5',
+                        'btts-yes': 'KG Var',
+                        'btts-no': 'KG Yok',
+                        'warnings': 'Mantık Uyarısı Olan'
+                    };
+                    
+                    container.innerHTML = `
+                        <div class="premium-alert warning">
+                            ℹ️ <strong>"${filterNames[type]}"</strong> filtresiyle eşleşen maç bulunamadı.<br><br>
+                            
+                            ${!Object.keys(predictions).length ? 
+                                'Önce <strong>"Tüm Maçları Tahmin Et"</strong> butonuna tıklayın.' :
+                                `Toplam ${allMatches.length} maçın ${Object.keys(predictions).length} tanesinde tahmin var.`
+                            }
+                        </div>
+                    `;
+                    return;
+                }
             }
             
             displayMatches(filtered);
@@ -1443,54 +1487,27 @@
         }
 
         function showError(message) {
-    const container = document.getElementById('match-container');
-    container.innerHTML = `<div class="premium-alert">❌ ${message}</div>`;
-}
+            const container = document.getElementById('match-container');
+            container.innerHTML = `<div class="premium-alert">❌ ${message}</div>`;
+        }
 
-function showSuccess(message) {
-    const container = document.getElementById('match-container');
-    const alert = document.createElement('div');
-    alert.className = 'premium-alert success';
-    alert.innerHTML = message;
-    container.insertBefore(alert, container.firstChild);
-    setTimeout(() => alert.remove(), 5000);
-}
+        function showSuccess(message) {
+            const container = document.getElementById('match-container');
+            const alert = document.createElement('div');
+            alert.className = 'premium-alert success';
+            alert.innerHTML = message;
+            container.insertBefore(alert, container.firstChild);
+            setTimeout(() => alert.remove(), 5000);
+        }
 
-// ⭐⭐⭐ BURAYA EKLE - showSuccess'ten SONRA ⭐⭐⭐
-function showLogicWarning(warnings) {
-    const container = document.getElementById('match-container');
-    
-    let warningHTML = `
-        <div class="premium-alert" style="border: 3px solid var(--danger); animation: warningPulse 2s infinite;">
-            <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 10px;">
-                <span style="font-size: 24px;">⚠️</span>
-                <strong style="color: var(--danger); font-size: 16px;">MANTIK HATASI TESPİT EDİLDİ!</strong>
-            </div>
-    `;
-    
-    warnings.forEach(warning => {
-        warningHTML += `
-            <div style="margin: 10px 0; padding: 10px; background: rgba(239, 68, 68, 0.1); border-radius: 8px;">
-                <div style="font-weight: bold; color: var(--danger);">${warning.severity}: ${warning.message}</div>
-                <div style="margin-top: 5px; font-size: 13px;">${warning.explanation}</div>
-                ${warning.suggestion ? `<div style="margin-top: 8px; padding: 8px; background: rgba(0,0,0,0.3); border-radius: 5px; font-size: 12px;"><strong>Çözüm:</strong> ${warning.suggestion}</div>` : ''}
-            </div>
-        `;
-    });
-    
-    warningHTML += `</div>`;
-    
-    container.insertAdjacentHTML('afterbegin', warningHTML);
-}
-// ⭐⭐⭐ EKLENECEK KOD SONU ⭐⭐⭐
+        function updateStatus(type, text) {
+            const badge = document.getElementById('api-status');
+            const statusText = document.getElementById('status-text');
+            badge.className = 'status-pill';
+            if (type === 'active') badge.classList.add('active');
+            statusText.textContent = text;
+        }
 
-function updateStatus(type, text) {
-    const badge = document.getElementById('api-status');
-    const statusText = document.getElementById('status-text');
-    badge.className = 'status-pill';
-    if (type === 'active') badge.classList.add('active');
-    statusText.textContent = text;
-}
         function updateStatusBar() {
             if (!apiStatus) return;
             updateStatus(apiStatus.model_loaded ? 'active' : 'error', apiStatus.model_loaded ? 'Model Hazır ✓' : 'Model Yok');
@@ -1511,6 +1528,16 @@ function updateStatus(type, text) {
         }
 
         window.addEventListener('DOMContentLoaded', async () => {
+            // Tab butonlarını başlangıçta devre dışı bırak
+            const tabButtons = document.querySelectorAll('.tab-btn');
+            tabButtons.forEach(btn => {
+                if (!btn.classList.contains('active')) {
+                    btn.style.opacity = '0.5';
+                    btn.style.cursor = 'not-allowed';
+                    btn.disabled = true;
+                }
+            });
+            
             await checkApiStatus();
             
             if (apiStatus && apiStatus.status === 'running') {
@@ -1520,7 +1547,7 @@ function updateStatus(type, text) {
                         ✅ Render API bağlantısı başarılı!<br>
                         <small>API: ${API_BASE_URL}</small><br>
                         <small>Model: ${apiStatus.predictor_type.toUpperCase()}</small><br><br>
-                        "Maçları Yükle" butonuna tıklayarak başlayın.
+                        <strong>👉 "Maçları Yükle"</strong> butonuna tıklayarak başlayın.
                     </div>
                 `;
             }
