@@ -56,26 +56,6 @@
             50% { opacity: 0.8; }
         }
 
-        .animated-bg::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: -100%;
-            width: 200%;
-            height: 100%;
-            background: linear-gradient(90deg, 
-                transparent,
-                rgba(255, 193, 7, 0.03),
-                transparent
-            );
-            animation: shimmer 15s infinite;
-        }
-
-        @keyframes shimmer {
-            0% { left: -100%; }
-            100% { left: 100%; }
-        }
-
         .main-wrapper {
             position: relative;
             z-index: 1;
@@ -186,29 +166,11 @@
                 0 0 40px var(--glow),
                 inset 0 0 20px rgba(255, 255, 255, 0.2);
             animation: float 3s ease-in-out infinite;
-            position: relative;
-            overflow: hidden;
-        }
-
-        .logo-orb::before {
-            content: '';
-            position: absolute;
-            top: -50%;
-            left: -50%;
-            width: 200%;
-            height: 200%;
-            background: linear-gradient(45deg, transparent, rgba(255, 255, 255, 0.3), transparent);
-            animation: rotate 4s linear infinite;
         }
 
         @keyframes float {
             0%, 100% { transform: translateY(0px) rotate(0deg); }
             50% { transform: translateY(-10px) rotate(180deg); }
-        }
-
-        @keyframes rotate {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
         }
 
         .logo-text h1 {
@@ -262,24 +224,6 @@
             box-shadow: 0 4px 15px rgba(255, 193, 7, 0.3);
         }
 
-        .premium-btn::before {
-            content: '';
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            width: 0;
-            height: 0;
-            border-radius: 50%;
-            background: rgba(255, 255, 255, 0.3);
-            transform: translate(-50%, -50%);
-            transition: width 0.6s, height 0.6s;
-        }
-
-        .premium-btn:hover::before {
-            width: 300px;
-            height: 300px;
-        }
-
         .premium-btn:hover {
             transform: translateY(-3px);
             box-shadow: 0 8px 25px rgba(255, 193, 7, 0.5);
@@ -302,6 +246,86 @@
             background: linear-gradient(135deg, var(--success), #059669);
         }
 
+        /* ✅ YENİ: Sıralama ve Gün Filtreleme */
+        .filter-controls {
+            display: flex;
+            gap: 20px;
+            padding: 15px 30px;
+            background: rgba(10, 14, 39, 0.8);
+            border-bottom: 1px solid var(--border);
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        .filter-group {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+
+        .filter-label {
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .sort-btn {
+            padding: 10px 20px;
+            background: rgba(42, 47, 74, 0.8);
+            border: 2px solid rgba(255, 193, 7, 0.3);
+            border-radius: 10px;
+            color: var(--text);
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .sort-btn:hover {
+            background: rgba(255, 193, 7, 0.1);
+            border-color: var(--primary);
+        }
+
+        .sort-btn.active {
+            background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+            border-color: var(--primary);
+            color: var(--dark);
+            box-shadow: 0 0 20px var(--glow);
+        }
+
+        .day-picker {
+            display: flex;
+            gap: 8px;
+        }
+
+        .day-btn {
+            padding: 10px 18px;
+            background: rgba(42, 47, 74, 0.8);
+            border: 2px solid rgba(255, 193, 7, 0.2);
+            border-radius: 10px;
+            color: var(--text-muted);
+            font-size: 12px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            white-space: nowrap;
+        }
+
+        .day-btn:hover {
+            background: rgba(255, 193, 7, 0.1);
+            border-color: var(--primary);
+            color: var(--primary);
+        }
+
+        .day-btn.active {
+            background: linear-gradient(135deg, var(--secondary), #764ba2);
+            border-color: var(--secondary);
+            color: white;
+            box-shadow: 0 0 20px rgba(102, 126, 234, 0.4);
+        }
+
         .smart-tabs {
             display: flex;
             gap: 5px;
@@ -311,19 +335,6 @@
             overflow-x: auto;
             scrollbar-width: thin;
             scrollbar-color: var(--primary) var(--dark-light);
-        }
-
-        .smart-tabs::-webkit-scrollbar {
-            height: 6px;
-        }
-
-        .smart-tabs::-webkit-scrollbar-track {
-            background: var(--dark-light);
-        }
-
-        .smart-tabs::-webkit-scrollbar-thumb {
-            background: var(--primary);
-            border-radius: 3px;
         }
 
         .tab-btn {
@@ -340,17 +351,6 @@
             position: relative;
         }
 
-        .tab-btn::after {
-            content: '';
-            position: absolute;
-            bottom: -2px;
-            left: 0;
-            width: 0;
-            height: 2px;
-            background: var(--primary);
-            transition: width 0.3s ease;
-        }
-
         .tab-btn:hover {
             color: var(--primary);
             background: rgba(255, 193, 7, 0.05);
@@ -360,20 +360,6 @@
             color: var(--primary);
             background: rgba(255, 193, 7, 0.1);
             border-color: var(--primary);
-        }
-
-        .tab-btn.active::after {
-            width: 100%;
-        }
-
-        .tab-btn:disabled {
-            opacity: 0.5 !important;
-            cursor: not-allowed !important;
-            pointer-events: none;
-        }
-
-        .tab-btn:disabled::after {
-            display: none;
         }
 
         .premium-container {
@@ -398,16 +384,6 @@
             transition: all 0.3s ease;
             position: relative;
             overflow: hidden;
-        }
-
-        .stat-card::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 3px;
-            background: linear-gradient(90deg, var(--primary), var(--secondary));
         }
 
         .stat-card:hover {
@@ -450,26 +426,54 @@
             overflow: hidden;
         }
 
-        .premium-match-card::before {
-            content: '';
-            position: absolute;
-            top: -50%;
-            left: -50%;
-            width: 200%;
-            height: 200%;
-            background: radial-gradient(circle, rgba(255, 193, 7, 0.05) 0%, transparent 70%);
-            opacity: 0;
-            transition: opacity 0.3s ease;
-        }
-
-        .premium-match-card:hover::before {
-            opacity: 1;
-        }
-
         .premium-match-card:hover {
             transform: translateY(-5px);
             border-color: var(--primary);
             box-shadow: 0 15px 40px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(255, 193, 7, 0.3);
+        }
+
+        /* ✅ YENİ: Düzeltilmiş maç göstergesi */
+        .auto-corrected-badge {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: linear-gradient(135deg, var(--success), #059669);
+            color: white;
+            padding: 6px 14px;
+            border-radius: 20px;
+            font-size: 11px;
+            font-weight: 700;
+            box-shadow: 0 0 20px rgba(16, 185, 129, 0.5);
+            z-index: 10;
+            animation: glow 2s ease-in-out infinite;
+        }
+
+        @keyframes glow {
+            0%, 100% { box-shadow: 0 0 20px rgba(16, 185, 129, 0.5); }
+            50% { box-shadow: 0 0 30px rgba(16, 185, 129, 0.8); }
+        }
+
+        .logic-warning-badge {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: var(--danger);
+            color: white;
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 11px;
+            font-weight: 700;
+            animation: warningPulse 2s infinite;
+            z-index: 10;
+        }
+
+        @keyframes warningPulse {
+            0%, 100% { 
+                box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7);
+            }
+            50% { 
+                box-shadow: 0 0 0 10px rgba(239, 68, 68, 0);
+            }
         }
 
         .match-header-premium {
@@ -519,13 +523,6 @@
             gap: 6px;
         }
 
-        .weighted-badge-premium {
-            background: linear-gradient(135deg, rgba(102, 126, 234, 0.3), rgba(118, 75, 162, 0.3));
-            border-color: var(--secondary);
-            color: #a78bfa;
-            box-shadow: 0 0 15px rgba(102, 126, 234, 0.3);
-        }
-
         .prediction-panel {
             background: rgba(10, 14, 39, 0.6);
             border: 1px solid var(--border);
@@ -560,23 +557,6 @@
             font-size: 16px;
             color: var(--text-muted);
             transition: all 0.3s ease;
-            position: relative;
-            overflow: hidden;
-        }
-
-        .pred-option::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: -100%;
-            width: 100%;
-            height: 100%;
-            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.1), transparent);
-            transition: left 0.5s ease;
-        }
-
-        .pred-option:hover::before {
-            left: 100%;
         }
 
         .pred-option.selected {
@@ -609,117 +589,6 @@
             color: var(--success);
         }
 
-        .multi-predictions {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 15px;
-            margin-top: 20px;
-            padding-top: 20px;
-            border-top: 1px solid var(--border);
-        }
-
-        .mini-pred-box {
-            background: rgba(10, 14, 39, 0.6);
-            border: 1px solid var(--border);
-            border-radius: 10px;
-            padding: 15px;
-        }
-
-        .mini-pred-label {
-            font-size: 11px;
-            font-weight: 700;
-            color: var(--text-muted);
-            margin-bottom: 10px;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-        }
-
-        .mini-pred-options {
-            display: flex;
-            gap: 8px;
-            margin-bottom: 10px;
-        }
-
-        .mini-option {
-            flex: 1;
-            padding: 10px;
-            background: rgba(42, 47, 74, 0.6);
-            border: 1px solid rgba(255, 193, 7, 0.2);
-            border-radius: 8px;
-            text-align: center;
-            font-size: 13px;
-            font-weight: 600;
-            color: var(--text-muted);
-            transition: all 0.3s ease;
-        }
-
-        .mini-option.selected {
-            background: linear-gradient(135deg, var(--primary), var(--primary-dark));
-            border-color: var(--primary);
-            color: var(--dark);
-            box-shadow: 0 0 15px var(--glow);
-        }
-
-        .mini-confidence {
-            font-size: 11px;
-            font-weight: 600;
-            color: var(--success);
-            text-align: center;
-        }
-
-        .match-details-premium {
-            max-height: 0;
-            opacity: 0;
-            overflow: hidden;
-            transition: all 0.4s ease;
-            background: rgba(10, 14, 39, 0.4);
-            border-radius: 0 0 12px 12px;
-            margin: 20px -25px -25px;
-            padding: 0 25px;
-        }
-
-        .match-details-premium.expanded {
-            max-height: 1000px;
-            opacity: 1;
-            padding: 25px;
-            margin-top: 20px;
-            border-top: 1px solid var(--border);
-        }
-
-        .detail-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-            gap: 15px;
-        }
-
-        .detail-item {
-            padding: 15px;
-            background: rgba(26, 31, 58, 0.6);
-            border: 1px solid var(--border);
-            border-radius: 10px;
-            transition: all 0.3s ease;
-        }
-
-        .detail-item:hover {
-            background: rgba(26, 31, 58, 0.9);
-            border-color: var(--primary);
-        }
-
-        .detail-item-label {
-            font-size: 11px;
-            font-weight: 600;
-            color: var(--text-muted);
-            margin-bottom: 8px;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-        }
-
-        .detail-item-value {
-            font-size: 15px;
-            font-weight: 700;
-            color: var(--text);
-        }
-
         .premium-loading {
             text-align: center;
             padding: 80px 20px;
@@ -733,21 +602,6 @@
             border-radius: 50%;
             animation: spin 1s linear infinite;
             margin: 0 auto 25px;
-            position: relative;
-        }
-
-        .loading-spinner::after {
-            content: '';
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            width: 50%;
-            height: 50%;
-            border: 4px solid transparent;
-            border-top-color: var(--secondary);
-            border-radius: 50%;
-            animation: spin 0.7s linear infinite reverse;
         }
 
         @keyframes spin {
@@ -759,11 +613,6 @@
             font-weight: 600;
             color: var(--primary);
             margin-bottom: 10px;
-        }
-
-        .loading-subtext {
-            font-size: 13px;
-            color: var(--text-muted);
         }
 
         .premium-alert {
@@ -782,84 +631,16 @@
             border-color: var(--success);
         }
 
-        .premium-alert.warning {
-            background: linear-gradient(135deg, rgba(255, 193, 7, 0.2), rgba(255, 152, 0, 0.2));
-            border-color: var(--primary);
-        }
-
-        @keyframes warningPulse {
-            0%, 100% { 
-                box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7);
-            }
-            50% { 
-                box-shadow: 0 0 0 10px rgba(239, 68, 68, 0);
-            }
-        }
-
-        .logic-warning-badge {
-            position: absolute;
-            top: 10px;
-            right: 10px;
-            background: var(--danger);
-            color: white;
-            padding: 6px 12px;
-            border-radius: 20px;
-            font-size: 11px;
-            font-weight: 700;
-            animation: warningPulse 2s infinite;
-            z-index: 10;
-        }
-
-        @media (max-width: 1024px) {
-            .match-header-premium {
-                grid-template-columns: 1fr;
-            }
-            
-            .prediction-panel {
-                min-width: 100%;
-            }
-        }
-
         @media (max-width: 768px) {
-            .header-top {
+            .filter-controls {
                 flex-direction: column;
-                gap: 15px;
+                align-items: flex-start;
             }
             
-            .logo-section {
-                flex-direction: column;
-                text-align: center;
-            }
-            
-            .control-panel {
-                flex-direction: column;
-            }
-            
-            .premium-btn {
+            .day-picker {
                 width: 100%;
-                justify-content: center;
+                overflow-x: auto;
             }
-            
-            .stats-dashboard {
-                grid-template-columns: 1fr;
-            }
-            
-            .detail-grid {
-                grid-template-columns: 1fr;
-            }
-        }
-
-        html {
-            scroll-behavior: smooth;
-        }
-
-        .premium-container {
-            animation: fadeIn 0.6s ease;
-        }
-
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(20px); }
-            to { opacity: 1; transform: translateY(0); }
         }
     </style>
 </head>
@@ -912,6 +693,24 @@
                     🗑️ Temizle
                 </button>
             </div>
+
+            <!-- ✅ YENİ: Sıralama ve Gün Filtreleme -->
+            <div class="filter-controls">
+                <div class="filter-group">
+                    <span class="filter-label">📊 Sıralama:</span>
+                    <button class="sort-btn active" onclick="sortMatches('default')">⚡ Varsayılan</button>
+                    <button class="sort-btn" onclick="sortMatches('confidence-desc')">⬆️ Güven (Yüksek)</button>
+                    <button class="sort-btn" onclick="sortMatches('confidence-asc')">⬇️ Güven (Düşük)</button>
+                    <button class="sort-btn" onclick="sortMatches('date')">📅 Tarih</button>
+                </div>
+
+                <div class="filter-group">
+                    <span class="filter-label">📅 Günler:</span>
+                    <div class="day-picker" id="day-picker">
+                        <!-- JavaScript ile doldurulacak -->
+                    </div>
+                </div>
+            </div>
         </header>
 
         <div class="smart-tabs">
@@ -924,7 +723,7 @@
             <button class="tab-btn" onclick="filterMatches('btts-yes')">🎯 KG Var</button>
             <button class="tab-btn" onclick="filterMatches('btts-no')">🚫 KG Yok</button>
             <button class="tab-btn" onclick="filterMatches('high')">⭐ Yüksek Güven</button>
-            <button class="tab-btn" onclick="filterMatches('warnings')">⚠️ Mantık Uyarıları</button>
+            <button class="tab-btn" onclick="filterMatches('corrected')">🔧 Düzeltilmiş</button>
         </div>
 
         <div class="premium-container" id="match-container">
@@ -943,6 +742,102 @@
         let predictions = {};
         let apiStatus = null;
         let currentFilter = 'all';
+        let currentSort = 'default';
+        let selectedDay = 'all';
+
+        // ✅ YENİ: Günlük butonları oluştur
+        function initializeDayPicker() {
+            const dayPicker = document.getElementById('day-picker');
+            const today = new Date();
+            
+            const daysHtml = ['<button class="day-btn active" onclick="filterByDay(\'all\')">📅 Tümü</button>'];
+            
+            for (let i = 0; i < 7; i++) {
+                const date = new Date(today);
+                date.setDate(today.getDate() + i);
+                
+                const dayName = date.toLocaleDateString('tr-TR', { weekday: 'short' });
+                const dateStr = date.toLocaleDateString('tr-TR', { day: '2-digit', month: '2-digit' });
+                const isoDate = date.toISOString().split('T')[0];
+                
+                daysHtml.push(`
+                    <button class="day-btn" onclick="filterByDay('${isoDate}')">
+                        ${i === 0 ? '🔴 ' : ''}${dayName}<br><small>${dateStr}</small>
+                    </button>
+                `);
+            }
+            
+            dayPicker.innerHTML = daysHtml.join('');
+        }
+
+        // ✅ YENİ: Güne göre filtreleme
+        function filterByDay(day) {
+            selectedDay = day;
+            
+            document.querySelectorAll('.day-btn').forEach(btn => btn.classList.remove('active'));
+            event.target.closest('.day-btn').classList.add('active');
+            
+            applyFiltersAndSort();
+        }
+
+        // ✅ YENİ: Sıralama
+        function sortMatches(sortType) {
+            currentSort = sortType;
+            
+            document.querySelectorAll('.sort-btn').forEach(btn => btn.classList.remove('active'));
+            event.target.classList.add('active');
+            
+            applyFiltersAndSort();
+        }
+
+        // ✅ YENİ: Filtreleme ve sıralama birleştirildi
+        function applyFiltersAndSort() {
+            let filtered = [...allMatches];
+            
+            // 1️⃣ Gün filtresi
+            if (selectedDay !== 'all') {
+                filtered = filtered.filter(match => {
+                    const matchDate = new Date(match.date).toISOString().split('T')[0];
+                    return matchDate === selectedDay;
+                });
+            }
+            
+            // 2️⃣ Tab filtresi
+            if (currentFilter !== 'all') {
+                filtered = filtered.filter(match => {
+                    const prediction = predictions[match.match_id];
+                    if (!prediction) return false;
+                    
+                    if (currentFilter === 'high') return prediction.confidence >= 0.7;
+                    if (currentFilter === '1' || currentFilter === 'X' || currentFilter === '2') return prediction.prediction === currentFilter;
+                    if (currentFilter === 'over') return prediction.over_under_prediction?.prediction === 'over';
+                    if (currentFilter === 'under') return prediction.over_under_prediction?.prediction === 'under';
+                    if (currentFilter === 'btts-yes') return prediction.btts_prediction?.prediction === true;
+                    if (currentFilter === 'btts-no') return prediction.btts_prediction?.prediction === false;
+                    if (currentFilter === 'corrected') return prediction.auto_corrected === true;
+                    return false;
+                });
+            }
+            
+            // 3️⃣ Sıralama
+            if (currentSort === 'confidence-desc') {
+                filtered.sort((a, b) => {
+                    const confA = predictions[a.match_id]?.confidence || 0;
+                    const confB = predictions[b.match_id]?.confidence || 0;
+                    return confB - confA;
+                });
+            } else if (currentSort === 'confidence-asc') {
+                filtered.sort((a, b) => {
+                    const confA = predictions[a.match_id]?.confidence || 0;
+                    const confB = predictions[b.match_id]?.confidence || 0;
+                    return confA - confB;
+                });
+            } else if (currentSort === 'date') {
+                filtered.sort((a, b) => new Date(a.date) - new Date(b.date));
+            }
+            
+            displayMatches(filtered);
+        }
 
         async function wakeUpAPI() {
             const wakeBtn = document.getElementById('wake-api-btn');
@@ -1029,14 +924,7 @@
                     displayMatches(allMatches);
                     document.getElementById('predict-all-btn').disabled = false;
                     updateLastUpdate();
-                    
-                    // Filtreleme butonlarını aktif et
-                    const tabButtons = document.querySelectorAll('.tab-btn');
-                    tabButtons.forEach(btn => {
-                        btn.style.opacity = '1';
-                        btn.style.cursor = 'pointer';
-                        btn.disabled = false;
-                    });
+                    initializeDayPicker();
                     
                     showSuccess(`✅ ${allMatches.length} maç başarıyla yüklendi!`);
                 } else {
@@ -1057,21 +945,22 @@
             predictBtn.disabled = true;
             predictBtn.innerHTML = '⏳ Tahmin Ediliyor...';
             
-            showLoading('Tahminler yapılıyor...', 'Weighted AI Model çalışıyor');
+            showLoading('Tahminler yapılıyor...', 'Weighted AI Model + Auto-Correction çalışıyor');
             
             predictions = {};
             let successCount = 0;
             let errorCount = 0;
-            let logicWarnings = 0;
+            let correctedCount = 0;
             
             for (let i = 0; i < allMatches.length; i++) {
                 const match = allMatches[i];
                 
                 try {
                     const controller = new AbortController();
-                    const timeout = setTimeout(() => controller.abort(), 15000);
+                    const timeout = setTimeout(() => controller.abort(), 20000);
                     
-                    const response = await fetch(`${API_BASE_URL}/api/predict/match`, {
+                    // ✅ DÜZELTİLMİŞ: Full match endpoint kullan (otomatik düzeltme ile)
+                    const response = await fetch(`${API_BASE_URL}/api/predict/full-match`, {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({
@@ -1087,104 +976,41 @@
                     
                     if (!response.ok) throw new Error(`HTTP ${response.status}`);
                     
-                    const prediction = await response.json();
+                    const fullPrediction = await response.json();
                     
-                    try {
-                        const ouResponse = await fetch(`${API_BASE_URL}/api/predict/over-under`, {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({
-                                home_team: match.home_team,
-                                away_team: match.away_team,
-                                odds: match.odds
-                            }),
-                            mode: 'cors'
-                        });
-                        
-                        if (ouResponse.ok) {
-                            const ouData = await ouResponse.json();
-                            prediction.over_under_prediction = ouData;
-                        }
-                    } catch (e) {}
-                    
-                    try {
-                        const bttsResponse = await fetch(`${API_BASE_URL}/api/predict/btts`, {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({
-                                home_team: match.home_team,
-                                away_team: match.away_team,
-                                odds: match.odds
-                            }),
-                            mode: 'cors'
-                        });
-                        
-                        if (bttsResponse.ok) {
-                            const bttsData = await bttsResponse.json();
-                            prediction.btts_prediction = bttsData;
-                        }
-                    } catch (e) {}
+                    // Verileri birleştir
+                    const prediction = {
+                        ...fullPrediction.predictions.match_result,
+                        over_under_prediction: fullPrediction.predictions.over_under,
+                        btts_prediction: fullPrediction.predictions.btts
+                    };
                     
                     predictions[match.match_id] = prediction;
-                    
-                    if (prediction.prediction && 
-                        prediction.over_under_prediction?.prediction && 
-                        prediction.btts_prediction?.prediction !== undefined) {
-                        
-                        try {
-                            const validationResponse = await fetch(`${API_BASE_URL}/api/validate/full-prediction`, {
-                                method: 'POST',
-                                headers: { 'Content-Type': 'application/json' },
-                                body: JSON.stringify({
-                                    ms_prediction: prediction.prediction,
-                                    ms_confidence: prediction.confidence,
-                                    ou_prediction: prediction.over_under_prediction.prediction,
-                                    ou_confidence: prediction.over_under_prediction.confidence,
-                                    btts_prediction: prediction.btts_prediction.prediction,
-                                    btts_confidence: prediction.btts_prediction.confidence
-                                }),
-                                mode: 'cors'
-                            });
-                            
-                            if (validationResponse.ok) {
-                                const validationData = await validationResponse.json();
-                                prediction.logic_validation = validationData;
-                                predictions[match.match_id] = prediction;
-                            }
-                        } catch (e) {
-                            console.log('Validation endpoint not available:', e);
-                        }
-                    }
-                    
                     successCount++;
                     
-                    if (prediction.logic_validation && !prediction.logic_validation.is_valid) {
-                        logicWarnings++;
+                    // ✅ Düzeltilmiş mi kontrol et
+                    if (prediction.auto_corrected) {
+                        correctedCount++;
                     }
                     
-                    showLoading(`Tahmin ediliyor: ${i + 1}/${allMatches.length}`, `✅ ${successCount} | ❌ ${errorCount} | ⚠️ ${logicWarnings} mantık uyarısı`);
+                    showLoading(
+                        `Tahmin ediliyor: ${i + 1}/${allMatches.length}`, 
+                        `✅ ${successCount} | ❌ ${errorCount} | 🔧 ${correctedCount} otomatik düzeltme`
+                    );
                     
                 } catch (error) {
                     errorCount++;
                 }
             }
             
-            displayMatches(allMatches);
+            applyFiltersAndSort();
             predictBtn.disabled = false;
             predictBtn.innerHTML = '🎯 Tüm Maçları Tahmin Et';
             updatePredictionCount();
             
-            // Tahminler tamamlandı - tüm butonları aktif tut
-            const tabButtons = document.querySelectorAll('.tab-btn');
-            tabButtons.forEach(btn => {
-                btn.style.opacity = '1';
-                btn.style.cursor = 'pointer';
-                btn.disabled = false;
-            });
-            
             let message = `${errorCount > 0 ? '⚠️' : '✅'} ${successCount}/${allMatches.length} maç tahmin edildi!`;
-            if (logicWarnings > 0) {
-                message += `<br><small>⚠️ ${logicWarnings} maçta mantık uyarısı var - Detaylar için maç kartlarına tıklayın</small>`;
+            if (correctedCount > 0) {
+                message += `<br><small>🔧 ${correctedCount} maçta mantık hatası otomatik düzeltildi</small>`;
             }
             showSuccess(message);
         }
@@ -1195,7 +1021,9 @@
             if (matches.length === 0) {
                 container.innerHTML = `
                     <div class="premium-alert warning">
-                        Henüz maç yüklenmedi. "Maçları Yükle" butonuna tıklayın.
+                        ${allMatches.length === 0 ? 
+                            'Henüz maç yüklenmedi. "Maçları Yükle" butonuna tıklayın.' :
+                            'Bu filtreyle eşleşen maç bulunamadı.'}
                     </div>
                 `;
                 return;
@@ -1219,14 +1047,12 @@
             
             let highConfidence = 0;
             let avgConfidence = 0;
-            let logicWarningsCount = 0;
+            let correctedCount = 0;
             
             Object.values(predictions).forEach(pred => {
                 if (pred.confidence >= 0.7) highConfidence++;
                 avgConfidence += pred.confidence;
-                if (pred.logic_validation && !pred.logic_validation.is_valid) {
-                    logicWarningsCount++;
-                }
+                if (pred.auto_corrected) correctedCount++;
             });
             
             avgConfidence = (avgConfidence / totalPredictions * 100).toFixed(1);
@@ -1236,7 +1062,7 @@
                     <div class="stat-card">
                         <div class="stat-icon">⚽</div>
                         <div class="stat-value">${matches.length}</div>
-                        <div class="stat-label">Toplam Maç</div>
+                        <div class="stat-label">Gösterilen Maç</div>
                     </div>
                     <div class="stat-card">
                         <div class="stat-icon">🎯</div>
@@ -1253,11 +1079,11 @@
                         <div class="stat-value">${avgConfidence}%</div>
                         <div class="stat-label">Ortalama Güven</div>
                     </div>
-                    ${logicWarningsCount > 0 ? `
-                        <div class="stat-card" style="border: 2px solid var(--danger); border-left-width: 5px;">
-                            <div class="stat-icon">⚠️</div>
-                            <div class="stat-value" style="color: var(--danger);">${logicWarningsCount}</div>
-                            <div class="stat-label">Mantık Uyarısı</div>
+                    ${correctedCount > 0 ? `
+                        <div class="stat-card" style="border: 2px solid var(--success); border-left-width: 5px;">
+                            <div class="stat-icon">🔧</div>
+                            <div class="stat-value" style="color: var(--success);">${correctedCount}</div>
+                            <div class="stat-label">Otomatik Düzeltme</div>
                         </div>
                     ` : ''}
                 </div>
@@ -1275,18 +1101,17 @@
             const overUnder = prediction?.over_under_prediction || {};
             const btts = prediction?.btts_prediction || {};
             
-            const hasLogicWarnings = prediction?.logic_validation && !prediction.logic_validation.is_valid;
-            const logicWarnings = prediction?.logic_validation?.warnings || [];
+            const wasAutoCorrected = prediction?.auto_corrected === true;
             
-            if (hasLogicWarnings) {
-                card.style.borderLeftColor = 'var(--danger)';
+            if (wasAutoCorrected) {
+                card.style.borderLeftColor = 'var(--success)';
                 card.style.borderLeftWidth = '5px';
             }
             
             card.innerHTML = `
-                ${hasLogicWarnings ? `
-                    <div class="logic-warning-badge">
-                        ⚠️ MANTIK HATASI
+                ${wasAutoCorrected ? `
+                    <div class="auto-corrected-badge">
+                        🔧 OTOMATİK DÜZELTİLDİ
                     </div>
                 ` : ''}
                 
@@ -1297,8 +1122,13 @@
                         </div>
                         <div class="match-meta-premium">
                             <span class="meta-badge">🏆 ${match.league_name || match.league_code}</span>
-                            <span class="meta-badge">📅 ${new Date(match.date).toLocaleDateString('tr-TR')}</span>
-                            <span class="meta-badge weighted-badge-premium">⚙️ WEIGHTED AI</span>
+                            <span class="meta-badge">📅 ${new Date(match.date).toLocaleDateString('tr-TR', {
+                                weekday: 'short',
+                                day: '2-digit',
+                                month: '2-digit',
+                                hour: '2-digit',
+                                minute: '2-digit'
+                            })}</span>
                         </div>
                     </div>
                     
@@ -1322,74 +1152,65 @@
                     </div>
                 </div>
                 
-                ${hasLogicWarnings ? `
-                    <div style="background: rgba(239, 68, 68, 0.1); border: 1px solid var(--danger); border-radius: 8px; padding: 10px; margin: 10px 0;">
-                        <div style="color: var(--danger); font-weight: bold; font-size: 12px;">
-                            ⚠️ MANTIK UYARISI: ${logicWarnings[0]?.message || 'Geçersiz tahmin kombinasyonu'}
+                ${wasAutoCorrected ? `
+                    <div style="background: rgba(16, 185, 129, 0.1); border: 1px solid var(--success); border-radius: 8px; padding: 12px; margin: 10px 0;">
+                        <div style="color: var(--success); font-weight: bold; font-size: 13px; margin-bottom: 5px;">
+                            🔧 OTOMATİK DÜZELTME YAPILDI
+                        </div>
+                        <div style="color: var(--text-muted); font-size: 12px;">
+                            Orijinal: <strong>${prediction.original_prediction || '?'}</strong> → 
+                            Düzeltilmiş: <strong>${pred}</strong>
+                            <br><small>${prediction.correction_reason || 'Alt 2.5 + KG Var = Sadece 1-1 (Beraberlik)'}</small>
                         </div>
                     </div>
                 ` : ''}
                 
                 ${hasPrediction ? `
-                    <div class="multi-predictions">
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; margin-top: 15px; padding-top: 15px; border-top: 1px solid var(--border);">
                         ${overUnder.prediction ? `
-                            <div class="mini-pred-box">
-                                <div class="mini-pred-label">📊 Alt/Üst 2.5</div>
-                                <div class="mini-pred-options">
-                                    <div class="mini-option ${overUnder.prediction === 'over' ? 'selected' : ''}">ÜST</div>
-                                    <div class="mini-option ${overUnder.prediction === 'under' ? 'selected' : ''}">ALT</div>
+                            <div style="background: rgba(10, 14, 39, 0.6); border: 1px solid var(--border); border-radius: 10px; padding: 12px;">
+                                <div style="font-size: 11px; font-weight: 700; color: var(--text-muted); margin-bottom: 8px; text-transform: uppercase;">📊 Alt/Üst 2.5</div>
+                                <div style="display: flex; gap: 6px; margin-bottom: 8px;">
+                                    <div style="flex: 1; padding: 8px; background: ${overUnder.prediction === 'over' ? 'linear-gradient(135deg, var(--primary), var(--primary-dark))' : 'rgba(42, 47, 74, 0.6)'}; border: 1px solid ${overUnder.prediction === 'over' ? 'var(--primary)' : 'rgba(255, 193, 7, 0.2)'}; border-radius: 8px; text-align: center; font-size: 12px; font-weight: 600; color: ${overUnder.prediction === 'over' ? 'var(--dark)' : 'var(--text-muted)'};">ÜST</div>
+                                    <div style="flex: 1; padding: 8px; background: ${overUnder.prediction === 'under' ? 'linear-gradient(135deg, var(--primary), var(--primary-dark))' : 'rgba(42, 47, 74, 0.6)'}; border: 1px solid ${overUnder.prediction === 'under' ? 'var(--primary)' : 'rgba(255, 193, 7, 0.2)'}; border-radius: 8px; text-align: center; font-size: 12px; font-weight: 600; color: ${overUnder.prediction === 'under' ? 'var(--dark)' : 'var(--text-muted)'};">ALT</div>
                                 </div>
-                                <div class="mini-confidence">Güven: ${(overUnder.confidence * 100).toFixed(0)}%</div>
+                                <div style="font-size: 11px; font-weight: 600; color: var(--success); text-align: center;">Güven: ${(overUnder.confidence * 100).toFixed(0)}%</div>
                             </div>
                         ` : ''}
                         
                         ${btts.prediction !== undefined ? `
-                            <div class="mini-pred-box">
-                                <div class="mini-pred-label">🎯 KG Var/Yok</div>
-                                <div class="mini-pred-options">
-                                    <div class="mini-option ${btts.prediction === true ? 'selected' : ''}">VAR</div>
-                                    <div class="mini-option ${btts.prediction === false ? 'selected' : ''}">YOK</div>
+                            <div style="background: rgba(10, 14, 39, 0.6); border: 1px solid var(--border); border-radius: 10px; padding: 12px;">
+                                <div style="font-size: 11px; font-weight: 700; color: var(--text-muted); margin-bottom: 8px; text-transform: uppercase;">🎯 KG Var/Yok</div>
+                                <div style="display: flex; gap: 6px; margin-bottom: 8px;">
+                                    <div style="flex: 1; padding: 8px; background: ${btts.prediction === true ? 'linear-gradient(135deg, var(--primary), var(--primary-dark))' : 'rgba(42, 47, 74, 0.6)'}; border: 1px solid ${btts.prediction === true ? 'var(--primary)' : 'rgba(255, 193, 7, 0.2)'}; border-radius: 8px; text-align: center; font-size: 12px; font-weight: 600; color: ${btts.prediction === true ? 'var(--dark)' : 'var(--text-muted)'};">VAR</div>
+                                    <div style="flex: 1; padding: 8px; background: ${btts.prediction === false ? 'linear-gradient(135deg, var(--primary), var(--primary-dark))' : 'rgba(42, 47, 74, 0.6)'}; border: 1px solid ${btts.prediction === false ? 'var(--primary)' : 'rgba(255, 193, 7, 0.2)'}; border-radius: 8px; text-align: center; font-size: 12px; font-weight: 600; color: ${btts.prediction === false ? 'var(--dark)' : 'var(--text-muted)'};">YOK</div>
                                 </div>
-                                <div class="mini-confidence">Güven: ${(btts.confidence * 100).toFixed(0)}%</div>
+                                <div style="font-size: 11px; font-weight: 600; color: var(--success); text-align: center;">Güven: ${(btts.confidence * 100).toFixed(0)}%</div>
+                            </div>
+                        ` : ''}
+                        
+                        ${match.odds ? `
+                            <div style="background: rgba(10, 14, 39, 0.6); border: 1px solid var(--border); border-radius: 10px; padding: 12px;">
+                                <div style="font-size: 11px; font-weight: 700; color: var(--text-muted); margin-bottom: 8px; text-transform: uppercase;">💰 Oranlar</div>
+                                <div style="display: flex; justify-content: space-between; gap: 8px;">
+                                    <div style="text-align: center;">
+                                        <div style="font-size: 10px; color: var(--text-muted); margin-bottom: 2px;">1</div>
+                                        <div style="font-size: 14px; font-weight: 700; color: var(--primary);">${match.odds['1']}</div>
+                                    </div>
+                                    <div style="text-align: center;">
+                                        <div style="font-size: 10px; color: var(--text-muted); margin-bottom: 2px;">X</div>
+                                        <div style="font-size: 14px; font-weight: 700; color: var(--primary);">${match.odds['X']}</div>
+                                    </div>
+                                    <div style="text-align: center;">
+                                        <div style="font-size: 10px; color: var(--text-muted); margin-bottom: 2px;">2</div>
+                                        <div style="font-size: 14px; font-weight: 700; color: var(--primary);">${match.odds['2']}</div>
+                                    </div>
+                                </div>
                             </div>
                         ` : ''}
                     </div>
-                    
-                    <div class="match-details-premium">
-                        <div class="detail-grid">
-                            <div class="detail-item">
-                                <div class="detail-item-label">🎯 Tahmin</div>
-                                <div class="detail-item-value">${pred === '1' ? 'Ev Sahibi' : pred === 'X' ? 'Beraberlik' : 'Deplasman'}</div>
-                            </div>
-                            <div class="detail-item">
-                                <div class="detail-item-label">💪 Güven</div>
-                                <div class="detail-item-value">${confidence}%</div>
-                            </div>
-                            <div class="detail-item">
-                                <div class="detail-item-label">📊 Olasılıklar</div>
-                                <div class="detail-item-value">
-                                    1: ${(prediction.probabilities.home_win * 100).toFixed(1)}% | 
-                                    X: ${(prediction.probabilities.draw * 100).toFixed(1)}% | 
-                                    2: ${(prediction.probabilities.away_win * 100).toFixed(1)}%
-                                </div>
-                            </div>
-                            ${match.odds ? `
-                                <div class="detail-item">
-                                    <div class="detail-item-label">💰 Oranlar</div>
-                                    <div class="detail-item-value">
-                                        1: ${match.odds['1']} | X: ${match.odds['X']} | 2: ${match.odds['2']}
-                                    </div>
-                                </div>
-                            ` : ''}
-                        </div>
-                    </div>
                 ` : ''}
             `;
-            
-            card.onclick = () => {
-                const details = card.querySelector('.match-details-premium');
-                if (details) details.classList.toggle('expanded');
-            };
             
             return card;
         }
@@ -1400,71 +1221,16 @@
             document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
             event.target.classList.add('active');
             
-            if (!allMatches || allMatches.length === 0) {
-                const container = document.getElementById('match-container');
-                container.innerHTML = `
-                    <div class="premium-alert warning">
-                        ⚠️ Henüz maç yüklenmedi!<br><br>
-                        Lütfen önce <strong>"Maçları Yükle"</strong> butonuna tıklayın.
-                    </div>
-                `;
-                return;
-            }
-            
-            let filtered = allMatches;
-            
-            if (type !== 'all') {
-                filtered = allMatches.filter(match => {
-                    const prediction = predictions[match.match_id];
-                    if (!prediction) return false;
-                    
-                    if (type === 'high') return prediction.confidence >= 0.7;
-                    if (type === '1' || type === 'X' || type === '2') return prediction.prediction === type;
-                    if (type === 'over') return prediction.over_under_prediction?.prediction === 'over';
-                    if (type === 'under') return prediction.over_under_prediction?.prediction === 'under';
-                    if (type === 'btts-yes') return prediction.btts_prediction?.prediction === true;
-                    if (type === 'btts-no') return prediction.btts_prediction?.prediction === false;
-                    if (type === 'warnings') {
-                        return prediction.logic_validation && !prediction.logic_validation.is_valid;
-                    }
-                    return false;
-                });
-                
-                if (filtered.length === 0) {
-                    const container = document.getElementById('match-container');
-                    const filterNames = {
-                        'high': 'Yüksek Güven (≥70%)',
-                        '1': 'Ev Sahibi Kazanır',
-                        'X': 'Beraberlik',
-                        '2': 'Deplasman Kazanır',
-                        'over': 'Üst 2.5',
-                        'under': 'Alt 2.5',
-                        'btts-yes': 'KG Var',
-                        'btts-no': 'KG Yok',
-                        'warnings': 'Mantık Uyarısı Olan'
-                    };
-                    
-                    container.innerHTML = `
-                        <div class="premium-alert warning">
-                            ℹ️ <strong>"${filterNames[type]}"</strong> filtresiyle eşleşen maç bulunamadı.<br><br>
-                            
-                            ${!Object.keys(predictions).length ? 
-                                'Önce <strong>"Tüm Maçları Tahmin Et"</strong> butonuna tıklayın.' :
-                                `Toplam ${allMatches.length} maçın ${Object.keys(predictions).length} tanesinde tahmin var.`
-                            }
-                        </div>
-                    `;
-                    return;
-                }
-            }
-            
-            displayMatches(filtered);
+            applyFiltersAndSort();
         }
 
         function clearAll() {
             allMatches = [];
             predictions = {};
             currentFilter = 'all';
+            currentSort = 'default';
+            selectedDay = 'all';
+            
             document.getElementById('match-container').innerHTML = `
                 <div class="premium-alert warning">
                     Maçlar temizlendi. "Maçları Yükle" butonuna tıklayın.
@@ -1510,7 +1276,7 @@
 
         function updateStatusBar() {
             if (!apiStatus) return;
-            updateStatus(apiStatus.model_loaded ? 'active' : 'error', apiStatus.model_loaded ? 'Model Hazır ✓' : 'Model Yok');
+            updateStatus(apiStatus.model_loaded ? 'active' : 'error', apiStatus.model_loaded ? 'Model Hazır ✔' : 'Model Yok');
             document.getElementById('model-type').textContent = apiStatus.predictor_type.toUpperCase();
         }
 
@@ -1528,16 +1294,7 @@
         }
 
         window.addEventListener('DOMContentLoaded', async () => {
-            // Tab butonlarını başlangıçta devre dışı bırak
-            const tabButtons = document.querySelectorAll('.tab-btn');
-            tabButtons.forEach(btn => {
-                if (!btn.classList.contains('active')) {
-                    btn.style.opacity = '0.5';
-                    btn.style.cursor = 'not-allowed';
-                    btn.disabled = true;
-                }
-            });
-            
+            initializeDayPicker();
             await checkApiStatus();
             
             if (apiStatus && apiStatus.status === 'running') {
@@ -1546,7 +1303,8 @@
                     <div class="premium-alert success">
                         ✅ Render API bağlantısı başarılı!<br>
                         <small>API: ${API_BASE_URL}</small><br>
-                        <small>Model: ${apiStatus.predictor_type.toUpperCase()}</small><br><br>
+                        <small>Model: ${apiStatus.predictor_type.toUpperCase()}</small><br>
+                        <small>🔧 Otomatik Düzeltme: AKTİF</small><br><br>
                         <strong>👉 "Maçları Yükle"</strong> butonuna tıklayarak başlayın.
                     </div>
                 `;
