@@ -187,10 +187,11 @@ if WEIGHTED_AVAILABLE:
                 model_dir=model_dir,
                 draw_threshold=0.30,
                 enable_monitoring=True,
-                enable_logic_validation=True
+                enable_logic_validation=True,
+                auto_correct_logic=True  # ✅ Otomatik düzeltme AÇIK
             )
             PREDICTOR_TYPE = "weighted"
-            print("✅ Weighted predictor initialized")
+            print("✅ Weighted predictor initialized with AUTO-CORRECTION")
         else:
             raise FileNotFoundError("Weighted model not trained")
             
@@ -223,8 +224,8 @@ if not WEIGHTED_AVAILABLE or PREDICTOR is None:
 # ---------- FastAPI App ----------
 app = FastAPI(
     title="Predicta Weighted API",
-    description="Football match prediction (75% Odds, 15% H2H, 10% Form)",
-    version="3.0"
+    description="Football match prediction (75% Odds, 15% H2H, 10% Form) + Auto-Correction",
+    version="3.1"
 )
 
 app.add_middleware(
@@ -297,11 +298,12 @@ def _dummy_upcoming():
 @app.get("/")
 def root():
     return {
-        "message": f"Predicta API - {PREDICTOR_TYPE.upper()}",
-        "version": "3.0",
+        "message": f"Predicta API - {PREDICTOR_TYPE.upper()} + AUTO-CORRECTION",
+        "version": "3.1",
         "predictor_type": PREDICTOR_TYPE,
         "weighted_system": WEIGHTED_AVAILABLE,
         "model_loaded": PREDICTOR is not None,
+        "auto_correction": "ENABLED ✅",
         "endpoints": {
             "docs": "/docs",
             "status": "/api/status",
@@ -319,7 +321,8 @@ async def health_check():
     return {
         "status": "healthy" if MODEL_READY else "model_missing",
         "timestamp": datetime.now().isoformat(),
-        "model_ready": MODEL_READY
+        "model_ready": MODEL_READY,
+        "auto_correction": "enabled"
     }
 
 @app.get("/api/status")
@@ -330,6 +333,7 @@ def api_status():
         "weighted_system": WEIGHTED_AVAILABLE,
         "nesine_fetcher": NESINE_AVAILABLE,
         "model_loaded": PREDICTOR is not None,
+        "auto_correction": "enabled"
     }
 
 @app.get("/api/matches/upcoming")
@@ -381,7 +385,7 @@ def get_upcoming(force_refresh: bool = Query(False)):
 
 @app.post("/api/predict/match")
 def predict_match(data: dict):
-    """Predict 1X2"""
+    """Predict 1X2 (with auto-correction)"""
     if PREDICTOR is None or PREDICTOR_TYPE == "no_model":
         return JSONResponse(status_code=503, content={"error": "No model"})
     
@@ -393,6 +397,7 @@ def predict_match(data: dict):
             feature_engineer=FEATURE_ENGINEER
         )
         pred["predictor_type"] = PREDICTOR_TYPE
+        pred["auto_correction_enabled"] = True
         return pred
     except Exception as e:
         return JSONResponse(status_code=500, content={"error": str(e)})
@@ -480,14 +485,51 @@ def predict_btts(data: dict):
 
 @app.post("/api/predict/full-match")
 async def predict_full_match(data: dict):
-    """Full prediction"""
+    """
+    ✅ DÜZELTİLMİŞ: OU ve BTTS ÖNCELİKLE hesaplanır, sonra MS tahmini yapılır
+    """
     if PREDICTOR is None:
         return JSONResponse(status_code=503, content={"error": "No model"})
     
     try:
-        ms = predict_match(data)
+        # 1️⃣ ÖNCELİKLE OU VE BTTS TAHMİNLERİNİ YAP
         ou = predict_over_under(data)
         btts = predict_btts(data)
+        
+        # 2️⃣ SONRA MS TAHMİNİ YAP (düzeltme için OU ve BTTS değerleri gerekli)
+        ms = predict_match(data)
+        
+        # 3️⃣ MANTIK KONTROLÜ VE OTOMATİK DÜZELTME
+        if hasattr(PREDICTOR, 'validate_full_prediction_set'):
+            try:
+                validation = PREDICTOR.validate_full_prediction_set(
+                    ms_prediction=ms.get("prediction"),
+                    ms_confidence=float(ms.get("confidence", 0.0)),
+                    ou_prediction=ou.get("prediction"),
+                    ou_confidence=float(ou.get("confidence", 0.0)),
+                    btts_prediction=btts.get("prediction"),
+                    btts_confidence=float(btts.get("confidence", 0.0))
+                )
+                
+                # 🔧 Eğer mantık hatası varsa, MS tahminini düzelt
+                if not validation.get("is_valid"):
+                    if ms.get("prediction") in ['1', '2'] and ou.get("prediction") == "under" and btts.get("prediction") == True:
+                        # Otomatik düzeltme
+                        ms["original_prediction"] = ms["prediction"]
+                        ms["prediction"] = "X"
+                        ms["prediction_name"] = "Draw"
+                        ms["confidence"] = 0.85
+                        ms["probabilities"] = {
+                            "home_win": 0.08,
+                            "draw": 0.85,
+                            "away_win": 0.07
+                        }
+                        ms["auto_corrected"] = True
+                        ms["correction_reason"] = "Alt 2.5 + KG Var = Sadece 1-1 (Beraberlik) olabilir"
+                
+                ms["logic_validation"] = validation
+            except Exception as e:
+                logging.error(f"Validation error: {e}")
         
         return {
             "match": {
@@ -498,7 +540,8 @@ async def predict_full_match(data: dict):
                 "match_result": ms,
                 "over_under": ou,
                 "btts": btts
-            }
+            },
+            "auto_correction_enabled": True
         }
     except Exception as e:
         return JSONResponse(status_code=500, content={"error": str(e)})
@@ -528,6 +571,7 @@ async def startup_event():
     print("🚀 Predicta API Starting")
     print(f"🎯 Type: {PREDICTOR_TYPE.upper()}")
     print(f"🤖 Model: {'LOADED' if PREDICTOR else 'MISSING'}")
+    print(f"🔧 Auto-Correction: ENABLED ✅")
     print("=" * 60)
 
 if __name__ == "__main__":
