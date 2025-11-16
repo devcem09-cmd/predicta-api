@@ -1,5 +1,8 @@
 """
-FIXED WEIGHTED PREDICTOR - Alt 2.5 + KG Var = X (Beraberlik) Düzeltmesi
+DÜZELTİLMİŞ WEIGHTED PREDICTOR
+- Entegre tahmin sistemi
+- Improved model selection
+- Better auto-correction
 """
 
 import json
@@ -11,10 +14,10 @@ from datetime import datetime
 
 class WeightedPredictor:
     """
-    Gelişmiş Weighted Predictor:
-    - %75 Odds, %15 H2H, %10 Form
-    - Smart Model Selection
-    - Logic Validation + AUTO-CORRECTION
+    DÜZELTİLMİŞ Weighted Predictor:
+    - Data leak FIXED
+    - Integrated predictions
+    - Smart model selection IMPROVED
     """
 
     def __init__(self,
@@ -23,7 +26,7 @@ class WeightedPredictor:
                  enable_monitoring: bool = True,
                  enable_logic_validation: bool = True,
                  use_smart_selection: bool = True,
-                 auto_correct_logic: bool = True):  # ✅ YENİ
+                 auto_correct_logic: bool = True):
         
         if model_dir is None:
             base_dir = Path(__file__).resolve().parents[1]
@@ -34,7 +37,7 @@ class WeightedPredictor:
         self.enable_monitoring = enable_monitoring
         self.enable_logic_validation = enable_logic_validation
         self.use_smart_selection = use_smart_selection
-        self.auto_correct_logic = auto_correct_logic  # ✅ YENİ
+        self.auto_correct_logic = auto_correct_logic
 
         self.ensemble = None
         self.scaler = None
@@ -45,7 +48,7 @@ class WeightedPredictor:
         self.individual_models = {}
         self.best_models_per_class = {}
 
-        print(f"🎯 Weighted Predictor Initializing...")
+        print(f"🎯 DÜZELTİLMİŞ Weighted Predictor Initializing...")
         print(f"   Model dir: {self.model_dir}")
         print(f"   Draw threshold: {self.draw_threshold}")
         print(f"   Logic validation: {'ENABLED ✅' if enable_logic_validation else 'DISABLED'}")
@@ -56,10 +59,10 @@ class WeightedPredictor:
         
         if use_smart_selection:
             self._load_individual_models()
-            self._select_best_per_class()
+            self._select_best_per_class_improved()
 
     def _load_models(self):
-        """Ensemble model, scaler ve metadata yükle"""
+        """Model yükleme"""
         try:
             candidate_models = ["weighted_model.pkl", "model.pkl"]
             model_path = None
@@ -122,8 +125,8 @@ class WeightedPredictor:
                 except Exception as e:
                     print(f"   ⚠️  Failed: {name} - {e}")
 
-    def _select_best_per_class(self):
-        """Her sınıf için en iyi modeli seç"""
+    def _select_best_per_class_improved(self):
+        """DÜZELTİLMİŞ Model seçimi - class-based accuracy"""
         if 'individual_scores' not in self.metadata:
             print("   ⚠️  No scores found, smart selection disabled")
             self.use_smart_selection = False
@@ -131,12 +134,13 @@ class WeightedPredictor:
         
         scores = self.metadata['individual_scores']
         
+        # Class-based model selection
         best_home = max(scores.items(), 
-                       key=lambda x: x[1].get('test_accuracy', 0))
+                       key=lambda x: x[1].get('home_accuracy', x[1].get('test_accuracy', 0)))
         best_draw = max(scores.items(),
                        key=lambda x: x[1].get('draw_accuracy', 0))
         best_away = max(scores.items(),
-                       key=lambda x: x[1].get('test_accuracy', 0))
+                       key=lambda x: x[1].get('away_accuracy', x[1].get('test_accuracy', 0)))
         
         self.best_models_per_class = {
             'home_win': best_home[0],
@@ -144,10 +148,10 @@ class WeightedPredictor:
             'away_win': best_away[0]
         }
         
-        print("\n   🎯 Best Models Per Class:")
-        print(f"      Home Win: {best_home[0]} ({best_home[1]['test_accuracy']:.2%})")
-        print(f"      Draw:     {best_draw[0]} ({best_draw[1]['draw_accuracy']:.2%})")
-        print(f"      Away Win: {best_away[0]} ({best_away[1]['test_accuracy']:.2%})")
+        print("\n   🎯 DÜZELTİLMİŞ Best Models Per Class:")
+        print(f"      Home Win: {best_home[0]} ({best_home[1].get('home_accuracy', best_home[1].get('test_accuracy', 0)):.2%})")
+        print(f"      Draw:     {best_draw[0]} ({best_draw[1].get('draw_accuracy', 0):.2%})")
+        print(f"      Away Win: {best_away[0]} ({best_away[1].get('away_accuracy', best_away[1].get('test_accuracy', 0)):.2%})")
 
     def _prepare_features(self, features: Dict[str, float]) -> np.ndarray:
         """Feature dict'i numpy array'e dönüştür"""
@@ -167,12 +171,12 @@ class WeightedPredictor:
             calibration_factor = 1.0
 
         proba_calibrated = proba.copy()
-        proba_calibrated[1] = proba_calibrated[1] * calibration_factor
+        proba_calibrated[1] = proba_calibrated[1] * calibration_factor  # Draw boost
         proba_calibrated = proba_calibrated / proba_calibrated.sum()
         return proba_calibrated
 
     def _predict_with_smart_selection(self, X_scaled: np.ndarray) -> Tuple[int, np.ndarray, str]:
-        """Smart model selection"""
+        """DÜZELTİLMİŞ Smart model selection"""
         ensemble_proba = self.ensemble.predict_proba(X_scaled)[0]
         predicted_class_idx = int(np.argmax(ensemble_proba))
         
@@ -189,29 +193,54 @@ class WeightedPredictor:
         else:
             return predicted_class_idx, ensemble_proba, 'ensemble'
 
+    def _calculate_ou_btts_from_features(self, features: Dict[str, float]) -> Tuple[str, float, bool, float]:
+        """Özelliklerden OU ve BTTS tahmini yap"""
+        # Expected goals hesapla
+        home_expected = (features.get('home_form_avg_goals_scored', 1.2) + 
+                        features.get('away_form_avg_goals_conceded', 1.2)) / 2
+        away_expected = (features.get('away_form_avg_goals_scored', 1.2) + 
+                        features.get('home_form_avg_goals_conceded', 1.2)) / 2
+        
+        total_expected = home_expected + away_expected
+        
+        # OU tahmini
+        if total_expected > 2.75:
+            ou_prediction = "over"
+            ou_confidence = min(0.95, (total_expected - 2.5) / 1.0)
+        elif total_expected > 2.5:
+            ou_prediction = "over"
+            ou_confidence = 0.6
+        elif total_expected > 2.25:
+            ou_prediction = "under"
+            ou_confidence = 0.55
+        else:
+            ou_prediction = "under"
+            ou_confidence = min(0.95, (2.5 - total_expected) / 1.0)
+        
+        # BTTS tahmini
+        home_btts_prob = min(0.9, home_expected / 1.5)
+        away_btts_prob = min(0.9, away_expected / 1.5)
+        btts_prob = home_btts_prob * away_btts_prob
+        btts_prediction = btts_prob > 0.5
+        btts_confidence = max(btts_prob, 1 - btts_prob)
+        
+        return ou_prediction, ou_confidence, btts_prediction, btts_confidence
+
     def _check_impossible_combination(self,
                                      ms_prediction: str,
                                      ou_prediction: Optional[str],
                                      btts_prediction: Optional[bool]) -> Tuple[bool, str]:
         """
-        🔴 KRİTİK KONTROL: Matematiksel olarak imkansız kombinasyonları yakala
-        
-        Returns:
-            (is_impossible, reason)
+        İmkansız kombinasyon kontrolü
         """
         # ❌ MS1/MS2 + Alt 2.5 + KG Var = İMKANSIZ
-        # Alt 2.5 (max 2 gol) + KG Var (her ikisi gol) = Sadece 1-1 olabilir
-        # 1-1 = Beraberlik, MS1 veya MS2 OLAMAZ!
-        
         if ms_prediction in ['1', '2'] and ou_prediction == 'under' and btts_prediction == True:
             return True, (
-                f"❌ {ms_prediction} + Alt 2.5 + KG Var kombinasyonu MATEMATİKSEL OLARAK İMKANSIZ!\n\n"
-                f"Açıklama:\n"
-                f"• Alt 2.5 = Maksimum 2 gol olabilir\n"
-                f"• KG Var = Her iki takım gol atmalı (minimum 1-1)\n"
+                f"❌ {ms_prediction} + Alt 2.5 + KG Var kombinasyonu MATEMATİKSEL OLARAK İMKANSIZ!\n"
+                f"• Alt 2.5 = Maksimum 2 gol\n"
+                f"• KG Var = Her iki takım gol atmalı\n"
                 f"• Bu kombinasyon SADECE 1-1 skorunu verir\n"
-                f"• 1-1 skoru beraberliktir, {ms_prediction} tahmini YANLIŞ!\n\n"
-                f"Doğru tahmin: MSX (Beraberlik)"
+                f"• 1-1 skoru beraberliktir, {ms_prediction} tahmini YANLIŞ!"
             )
         
         return False, ""
@@ -222,10 +251,7 @@ class WeightedPredictor:
                                 ou_prediction: Optional[str],
                                 btts_prediction: Optional[bool]) -> Tuple[str, np.ndarray, Dict[str, Any]]:
         """
-        🔧 OTOMATİK DÜZELTME: İmkansız kombinasyonları düzelt
-        
-        Returns:
-            (corrected_prediction, corrected_proba, correction_info)
+        OTOMATİK DÜZELTME
         """
         correction_info = {
             'was_corrected': False,
@@ -238,21 +264,15 @@ class WeightedPredictor:
         )
         
         if is_impossible:
-            # 🔧 Alt 2.5 + KG Var = Otomatik olarak X'e çevir
+            # Otomatik düzeltme uygula
             corrected_prediction = 'X'
-            
-            # Olasılıkları da güncelle (beraberliğe yüksek olasılık ver)
-            corrected_proba = ms_proba.copy()
-            corrected_proba[1] = 0.85  # Draw'a yüksek olasılık
-            corrected_proba[0] = 0.08  # Home'a düşük
-            corrected_proba[2] = 0.07  # Away'e düşük
+            corrected_proba = np.array([0.08, 0.85, 0.07])  # Draw'a yüksek olasılık
             
             correction_info = {
                 'was_corrected': True,
                 'original_prediction': ms_prediction,
                 'corrected_prediction': corrected_prediction,
                 'correction_reason': reason,
-                'confidence_penalty': 0.15,
                 'auto_corrected_proba': {
                     'home_win': float(corrected_proba[0]),
                     'draw': float(corrected_proba[1]),
@@ -264,21 +284,22 @@ class WeightedPredictor:
         
         return ms_prediction, ms_proba, correction_info
 
-    def predict_match(self,
+    def predict_match_integrated(self,
                       home_team: str,
                       away_team: str,
                       odds: Optional[Dict[str, float]] = None,
                       feature_engineer=None,
-                      actual_result: Optional[str] = None,
-                      return_all_predictions: bool = False) -> Dict[str, Any]:
+                      actual_result: Optional[str] = None) -> Dict[str, Any]:
         """
-        ✅ GELİŞMİŞ TAHMİN (Otomatik düzeltme ile)
+        ✅ DÜZELTİLMİŞ ENTEGRE TAHMİN SİSTEMİ
+        - MS, OU, BTTS birlikte tahmin edilir
+        - Otomatik düzeltme entegre
         """
         if feature_engineer is None:
             raise ValueError("❌ FeatureEngineer required for predictions")
 
-        # Feature extraction
-        features = feature_engineer.extract_match_features(home_team, away_team, odds)
+        # Özellik çıkarımı (current_idx=None çünkü tahmin zamanı)
+        features = feature_engineer.extract_match_features(home_team, away_team, odds, None, 0)
         X = self._prepare_features(features)
         X_scaled = self.scaler.transform(X)
         
@@ -306,6 +327,9 @@ class WeightedPredictor:
 
         proba = self._apply_odds_priority(proba, odds_confidence)
 
+        # OU ve BTTS tahminleri (özelliklerden)
+        ou_prediction, ou_confidence, btts_prediction, btts_confidence = self._calculate_ou_btts_from_features(features)
+
         # Label mapping
         idx_to_label = {0: "1", 1: "X", 2: "2"}
         idx_to_name = {0: "Home Win", 1: "Draw", 2: "Away Win"}
@@ -313,6 +337,19 @@ class WeightedPredictor:
         
         prediction_label = idx_to_label[pred_idx]
         original_prediction = prediction_label
+
+        # 🔧 OTOMATİK DÜZELTME
+        correction_info = {'was_corrected': False}
+        
+        if self.auto_correct_logic:
+            corrected_pred, corrected_proba, correction_info = self._auto_correct_prediction(
+                prediction_label, proba, ou_prediction, btts_prediction
+            )
+            
+            if correction_info['was_corrected']:
+                prediction_label = corrected_pred
+                proba = corrected_proba
+                pred_idx = label_to_idx[corrected_pred]
 
         result = {
             "home_team": home_team,
@@ -326,44 +363,33 @@ class WeightedPredictor:
             },
             "confidence": float(proba[pred_idx]),
             "odds_confidence": float(odds_confidence),
-            "model_type": "weighted_ensemble_smart",
+            "model_type": "weighted_ensemble_integrated",
             "model_used": model_used,
             "feature_priorities": {
                 "odds": "75%",
                 "h2h": "15%",
                 "form": "10%"
+            },
+            # Entegre OU ve BTTS tahminleri
+            "integrated_predictions": {
+                "over_under": {
+                    "prediction": ou_prediction,
+                    "confidence": ou_confidence,
+                    "expected_goals": round(
+                        (features.get('home_form_avg_goals_scored', 1.2) + 
+                         features.get('away_form_avg_goals_scored', 1.2)) / 2, 2
+                    )
+                },
+                "btts": {
+                    "prediction": btts_prediction,
+                    "confidence": btts_confidence
+                }
             }
         }
 
-        # 🔴 ÖNCELİKLE Over/Under ve BTTS tahminlerini al (düzeltme için gerekli)
-        ou_prediction = None
-        ou_confidence = None
-        btts_prediction = None
-        btts_confidence = None
-
-        # 🔧 OTOMATİK DÜZELTME (eğer aktifse)
-        correction_info = {'was_corrected': False}
-        
-        if self.auto_correct_logic:
-            # ⚠️ DİKKAT: Gerçek OU ve BTTS değerlerini kullanmalısınız
-            # Bu örnekte placeholder kullanıyoruz, gerçek implementasyonda
-            # bu değerler önceden hesaplanmalı
-            
-            corrected_pred, corrected_proba, correction_info = self._auto_correct_prediction(
-                prediction_label, proba, ou_prediction, btts_prediction
-            )
-            
-            if correction_info['was_corrected']:
-                result['prediction'] = corrected_pred
-                result['prediction_name'] = idx_to_name[label_to_idx[corrected_pred]]
-                result['probabilities'] = correction_info['auto_corrected_proba']
-                result['confidence'] = float(corrected_proba[label_to_idx[corrected_pred]])
-                result['auto_correction'] = correction_info
-                
-                print(f"\n🔧 AUTO-CORRECTION APPLIED:")
-                print(f"   Original: {original_prediction}")
-                print(f"   Corrected: {corrected_pred}")
-                print(f"   Reason: Alt 2.5 + KG Var = Sadece 1-1 (Beraberlik)")
+        # Auto-correction info
+        if correction_info['was_corrected']:
+            result['auto_correction'] = correction_info
 
         # Odds analizi
         if odds and all(k in odds for k in ['1', 'X', '2']):
@@ -398,6 +424,11 @@ class WeightedPredictor:
 
         return result
 
+    # Backward compatibility
+    def predict_match(self, *args, **kwargs):
+        """Eski fonksiyon için wrapper"""
+        return self.predict_match_integrated(*args, **kwargs)
+
     def validate_full_prediction_set(self, ms_prediction, ms_confidence, ou_prediction, 
                                     ou_confidence, btts_prediction, btts_confidence):
         """
@@ -407,7 +438,7 @@ class WeightedPredictor:
         suggestions = []
         is_valid = True
         
-        # 🔴 KRİTİK KONTROL
+        # Kritik kontrol
         is_impossible, reason = self._check_impossible_combination(
             ms_prediction, ou_prediction, btts_prediction
         )
@@ -426,26 +457,18 @@ class WeightedPredictor:
                 "type": "critical_fix",
                 "original": f"{ms_prediction} + Alt 2.5 + KG Var",
                 "recommended_fix": "MSX + Alt 2.5 + KG Var",
-                "reason": "Alt 2.5 + KG Var kombinasyonu sadece 1-1 skorunu verir (beraberlik)",
+                "reason": "Alt 2.5 + KG Var kombinasyonu sadece 1-1 skorunu verir",
                 "confidence": "Matematiksel kesinlik (%100)",
                 "guaranteed_score": "1-1"
             })
         
-        # Diğer kontroller...
+        # Diğer kontroller
         if ou_prediction == 'over' and not btts_prediction:
             warnings.append({
                 "severity": "WARNING",
                 "type": "unlikely_combination",
                 "message": "⚠️ Üst 2.5 + KG Yok = Zor kombinasyon (tek takım 3+ gol)",
                 "probability": "Düşük (~15%)"
-            })
-        
-        if ms_prediction == 'X' and ou_prediction == 'over':
-            warnings.append({
-                "severity": "WARNING",
-                "type": "rare_combination",
-                "message": "⚠️ MSX + Üst 2.5 = Çok nadir (yüksek skorlu beraberlik)",
-                "probability": "Çok düşük (~8%)"
             })
         
         avg_confidence = (ms_confidence + ou_confidence + btts_confidence) / 3
@@ -469,42 +492,8 @@ class WeightedPredictor:
                 "total_warnings": len(warnings),
                 "critical_issues": len([w for w in warnings if w.get("severity") == "CRITICAL"]),
                 "overall_risk": "CRITICAL" if not is_valid else "MEDIUM" if len(warnings) > 2 else "LOW",
-                "recommendation": (
-                    "❌ TAHMİNLERİ DÜZELT! (Otomatik düzeltme mevcut)" if not is_valid else
-                    "⚠️ Riskli kombinasyon" if len(warnings) > 2 else
-                    "✅ Tahminler tutarlı"
-                )
-            },
-            "possible_scores": self._get_possible_scores(ms_prediction, ou_prediction, btts_prediction)
+            }
         }
-
-    def _get_possible_scores(self, ms_prediction, ou_prediction, btts_prediction):
-        """Olası skorları hesapla"""
-        if ou_prediction == 'under' and btts_prediction:
-            return ["1-1"]  # Garantili tek skor
-        
-        scores = []
-        if ou_prediction == 'under' and not btts_prediction:
-            if ms_prediction == '1':
-                scores = ["1-0", "2-0"]
-            elif ms_prediction == '2':
-                scores = ["0-1", "0-2"]
-            else:
-                scores = ["0-0"]
-        elif ou_prediction == 'over' and btts_prediction:
-            if ms_prediction == '1':
-                scores = ["2-1", "3-1", "3-2", "4-2"]
-            elif ms_prediction == '2':
-                scores = ["1-2", "1-3", "2-3", "2-4"]
-            else:
-                scores = ["2-2", "3-3"]
-        elif ou_prediction == 'over' and not btts_prediction:
-            if ms_prediction == '1':
-                scores = ["3-0", "4-0", "5-0"]
-            elif ms_prediction == '2':
-                scores = ["0-3", "0-4", "0-5"]
-        
-        return scores if scores else ["Belirsiz"]
 
     def get_performance_stats(self) -> Dict[str, Any]:
         """Performans istatistikleri"""
