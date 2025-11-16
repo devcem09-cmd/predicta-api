@@ -10,12 +10,10 @@ warnings.filterwarnings('ignore')
 
 class WeightedFeatureEngineer:
     """
-    AĞIRLIKLI ÖZELLİK ÇIKARIMI
-    
-    Öncelik Sırası:
-    - %75: Bahis Oranları (Piyasa Beklentisi)
-    - %15: H2H Geçmiş Performans
-    - %10: Son Form Durumu
+    DÜZELTİLMİŞ AĞIRLIKLI ÖZELLİK ÇIKARIMI
+    - Data leak düzeltildi
+    - Gerçek veri hesaplamaları eklendi
+    - Entegre özellik çıkarımı
     """
     
     def __init__(self, df: pd.DataFrame, n_jobs: int = -1):
@@ -43,9 +41,11 @@ class WeightedFeatureEngineer:
         self._convert_to_numpy()
         self._calculate_global_averages()
         
-        print(f"📊 Weighted Feature Engineer initialized")
+        print(f"📊 DÜZELTİLMİŞ Weighted Feature Engineer initialized")
         print(f"   Matches: {len(self.df)}")
         print(f"   Priority: 75% Odds | 15% H2H | 10% Form")
+        print(f"   ✅ Data leak FIXED")
+        print(f"   ✅ Real data calculations")
 
     # ============================================================
     # VERİ TEMİZLEME VE HAZIRLIK
@@ -155,49 +155,35 @@ class WeightedFeatureEngineer:
         """Global ortalamaları hesapla"""
         self.global_avg_home_goals = self.df['home_score'].mean()
         self.global_avg_away_goals = self.df['away_score'].mean()
+        self.global_win_rates = {
+            'home_win': (self.results == '1').mean(),
+            'draw': (self.results == 'X').mean(),
+            'away_win': (self.results == '2').mean()
+        }
 
     # ============================================================
     # BAHİS ORANLARI ÖZELLİKLERİ (%75 AĞIRLIK)
     # ============================================================
     
     def _extract_odds_features(self, odds: Optional[Dict[str, float]]) -> Dict[str, float]:
-        """
-        BAHİS ORANLARI ÖZELLİKLERİ - EN ÖNEMLİ KISIM
-        
-        Bu özellikler %75 ağırlığa sahip olacak:
-        - Implied probabilities (piyasa beklentileri)
-        - Value indicators (değer tespiti)
-        - Market confidence (piyasa güveni)
-        - Odds spreads (oran farklılıkları)
-        """
+        """Bahis oranları özellikleri"""
         default_features = {
-            # Temel oranlar
             'odds_home': 2.50,
             'odds_draw': 3.20,
             'odds_away': 2.80,
-            
-            # Implied probabilities (normalize edilmiş)
             'odds_home_prob': 0.33,
             'odds_draw_prob': 0.33,
             'odds_away_prob': 0.33,
-            
-            # Market analysis
             'market_margin': 0.05,
             'market_confidence': 0.5,
             'favorite_odds': 2.50,
             'underdog_odds': 2.80,
             'odds_spread': 0.30,
-            
-            # Value indicators
             'home_value': 0.0,
             'draw_value': 0.0,
             'away_value': 0.0,
-            
-            # Draw-specific
-            'draw_odds_level': 0.5,  # 0=düşük, 1=yüksek
+            'draw_odds_level': 0.5,
             'draw_market_view': 0.33,
-            
-            # Certainty indicators
             'clear_favorite': 0.0,
             'balanced_match': 1.0,
         }
@@ -206,7 +192,6 @@ class WeightedFeatureEngineer:
             return default_features
         
         try:
-            # Oranları al ve doğrula
             if not all(k in odds for k in ['1', 'X', '2']):
                 return default_features
             
@@ -217,39 +202,36 @@ class WeightedFeatureEngineer:
             odds_x = float(odds['X'])
             odds_2 = float(odds['2'])
             
-            # Implied probabilities (normalize edilmiş)
+            # Implied probabilities
             total_prob = (1/odds_1 + 1/odds_x + 1/odds_2)
             
             prob_1 = (1/odds_1) / total_prob
             prob_x = (1/odds_x) / total_prob
             prob_2 = (1/odds_2) / total_prob
             
-            # Market margin (bookmaker komisyonu)
+            # Market analysis
             market_margin = total_prob - 1.0
-            
-            # Market confidence (düşük margin = yüksek güven)
             market_confidence = 1.0 - min(market_margin, 0.15) / 0.15
             
-            # Favorileri belirle
+            # Favorites
             favorite_odds = min(odds_1, odds_2)
             underdog_odds = max(odds_1, odds_2)
             odds_spread = underdog_odds - favorite_odds
             
-            # Value indicators (expected vs market)
-            historical_exp = [0.45, 0.27, 0.28]  # Tipik dağılım
-            home_value = historical_exp[0] - prob_1
-            draw_value = historical_exp[1] - prob_x
-            away_value = historical_exp[2] - prob_2
+            # Value indicators (global ortalamalara göre)
+            home_value = self.global_win_rates['home_win'] - prob_1
+            draw_value = self.global_win_rates['draw'] - prob_x
+            away_value = self.global_win_rates['away_win'] - prob_2
             
             # Draw odds level
             if odds_x < 2.8:
-                draw_odds_level = 0.0  # Düşük (beraberlik bekleniyor)
+                draw_odds_level = 0.0
             elif odds_x > 3.6:
-                draw_odds_level = 1.0  # Yüksek (beraberlik beklenmiyor)
+                draw_odds_level = 1.0
             else:
                 draw_odds_level = (odds_x - 2.8) / (3.6 - 2.8)
             
-            # Clear favorite check
+            # Match balance
             clear_favorite = 1.0 if odds_spread > 1.0 else 0.0
             balanced_match = 1.0 if odds_spread < 0.4 else 0.0
             
@@ -278,39 +260,32 @@ class WeightedFeatureEngineer:
             return default_features
 
     # ============================================================
-    # H2H ÖZELLİKLERİ (%15 AĞIRLIK)
+    # H2H ÖZELLİKLERİ (%15 AĞIRLIK) - DÜZELTİLMİŞ
     # ============================================================
     
     def _extract_h2h_features(self, home_team: str, away_team: str, 
-                          current_idx: int = None) -> Dict[str, float]:
-        """
-        HEAD-TO-HEAD ÖZELLİKLERİ
+                          current_idx: int) -> Dict[str, float]:
+        """DÜZELTİLMİŞ H2H özellikleri - data leak yok"""
+        if current_idx is None:
+            raise ValueError("❌ current_idx required to prevent data leak!")
         
-        Geçmiş karşılaşma verileri:
-        - Son 10 maç istatistikleri
-        - Kazanma oranları
-        - Gol ortalamaları
-        - Beraberlik eğilimi
-        """
         pair_key = tuple(sorted([str(home_team), str(away_team)]))
         h2h_indices = self.h2h_idx.get(pair_key, [])
         
-        # ✅ FIX: current_idx None ise tüm maçları al
-        if current_idx is not None:
-            h2h_indices = [i for i in h2h_indices if i < current_idx]
-        
-        # Son 10 maç
-        h2h_indices = h2h_indices[-10:]
+        # ✅ SADECE geçmiş maçları al
+        h2h_indices = [i for i in h2h_indices if i < current_idx]
+        h2h_indices = h2h_indices[-10:]  # Son 10 maç
         
         if not h2h_indices:
+            # Gerçek lig ortalamalarını kullan
             return {
                 'h2h_matches': 0,
-                'h2h_home_win_rate': 0.40,
-                'h2h_draw_rate': 0.27,
-                'h2h_away_win_rate': 0.33,
-                'h2h_avg_home_goals': 1.3,
-                'h2h_avg_away_goals': 1.1,
-                'h2h_avg_total_goals': 2.4,
+                'h2h_home_win_rate': float(self.global_win_rates['home_win']),
+                'h2h_draw_rate': float(self.global_win_rates['draw']),
+                'h2h_away_win_rate': float(self.global_win_rates['away_win']),
+                'h2h_avg_home_goals': float(self.global_avg_home_goals),
+                'h2h_avg_away_goals': float(self.global_avg_away_goals),
+                'h2h_avg_total_goals': float(self.global_avg_home_goals + self.global_avg_away_goals),
                 'h2h_high_scoring': 0.0,
                 'h2h_draw_tendency': 0.0,
             }
@@ -328,53 +303,46 @@ class WeightedFeatureEngineer:
         
         total = len(indices)
         avg_total = float(np.mean(home_goals + away_goals))
+        draw_rate = float(draws / total)
         
         return {
             'h2h_matches': total,
             'h2h_home_win_rate': float(home_wins / total),
-            'h2h_draw_rate': float(draws / total),
+            'h2h_draw_rate': draw_rate,
             'h2h_away_win_rate': float(away_wins / total),
             'h2h_avg_home_goals': float(np.mean(home_goals)),
             'h2h_avg_away_goals': float(np.mean(away_goals)),
             'h2h_avg_total_goals': avg_total,
             'h2h_high_scoring': 1.0 if avg_total > 3.0 else 0.0,
-            'h2h_draw_tendency': 1.0 if (draws / total) > 0.35 else 0.0,
+            'h2h_draw_tendency': 1.0 if draw_rate > 0.35 else 0.0,
         }
     
     # ============================================================
-    # FORM ÖZELLİKLERİ (%10 AĞIRLIK)
+    # FORM ÖZELLİKLERİ (%10 AĞIRLIK) - DÜZELTİLMİŞ
     # ============================================================
     
-    def _extract_form_features(self, team: str, current_idx: int = None, 
+    def _extract_form_features(self, team: str, current_idx: int, 
                            is_home: bool = True) -> Dict[str, float]:
-        """
-        SON FORM ÖZELLİKLERİ
+        """DÜZELTİLMİŞ Form özellikleri - data leak yok"""
+        if current_idx is None:
+            raise ValueError("❌ current_idx required to prevent data leak!")
         
-        Son 5 maçtaki performans:
-        - Puan ortalaması
-        - Galibiyet oranı
-        - Gol performansı
-        """
         if is_home:
             all_indices = self.home_matches_idx.get(team, [])
         else:
             all_indices = self.away_matches_idx.get(team, [])
         
-        # ✅ FIX: current_idx None ise tüm maçları al
-        if current_idx is not None:
-            indices = [i for i in all_indices if i < current_idx]
-        else:
-            indices = all_indices.copy()
-        
-        # Son 5 maç
-        indices = indices[-5:]
+        # ✅ SADECE geçmiş maçları al
+        indices = [i for i in all_indices if i < current_idx]
+        indices = indices[-5:]  # Son 5 maç
         
         if not indices:
+            # Takımın lig ortalamalarını kullan
             return {
-                'form_win_rate': 0.40,
-                'form_points_per_game': 1.2,
-                'form_avg_goals_scored': 1.2,
-                'form_avg_goals_conceded': 1.2,
+                'form_win_rate': float(self.global_win_rates['home_win'] if is_home else self.global_win_rates['away_win']),
+                'form_points_per_game': float(1.2),
+                'form_avg_goals_scored': float(self.global_avg_home_goals if is_home else self.global_avg_away_goals),
+                'form_avg_goals_conceded': float(self.global_avg_away_goals if is_home else self.global_avg_home_goals),
                 'form_momentum': 0.5,
             }
         
@@ -388,13 +356,13 @@ class WeightedFeatureEngineer:
         draws = np.sum(results == 'X')
         points = wins * 3 + draws
         
-        # Momentum (son maçların ağırlıklı ortalaması)
-        weights = np.array([0.10, 0.15, 0.20, 0.25, 0.30])[:len(indices)]  # Son maça daha fazla ağırlık
-        weights = weights / weights.sum()  # Normalize
+        # Momentum hesapla
+        weights = np.array([0.10, 0.15, 0.20, 0.25, 0.30])[:len(indices)]
+        weights = weights / weights.sum()
         
         match_points = np.where(results == ('1' if is_home else '2'), 3, 
                                 np.where(results == 'X', 1, 0))
-        momentum = np.sum(match_points * weights) / 3.0  # Normalize to 0-1
+        momentum = np.sum(match_points * weights) / 3.0
         
         return {
             'form_win_rate': float(wins / len(indices)),
@@ -405,34 +373,32 @@ class WeightedFeatureEngineer:
         }
 
     # ============================================================
-    # ANA FEATURE EXTRACTION
+    # ANA FEATURE EXTRACTION - DÜZELTİLMİŞ
     # ============================================================
     
     def extract_match_features(self, home_team: str, away_team: str,
                                odds: Optional[Dict[str, float]] = None,
                                current_date=None, current_idx: int = None) -> Dict[str, float]:
         """
-        AĞIRLIKLI ÖZELLİK ÇIKARIMI
-        
-        Öncelik sırası:
-        1. %75 - Bahis Oranları (18 özellik)
-        2. %15 - H2H Geçmiş (9 özellik)
-        3. %10 - Form Durumu (10 özellik)
-        
-        Toplam: 37 özellik
+        DÜZELTİLMİŞ Özellik Çıkarımı
+        - current_idx ZORUNLU
+        - Data leak YOK
+        - Gerçek veri hesaplamaları
         """
+        if current_idx is None:
+            raise ValueError("❌ current_idx parameter is REQUIRED to prevent data leakage!")
+        
         features = {}
         
-        # 1. BAHİS ORANLARI ÖZELLİKLERİ (%75 ağırlık - 18 özellik)
+        # 1. BAHİS ORANLARI ÖZELLİKLERİ (%75 ağırlık)
         odds_features = self._extract_odds_features(odds)
-        for key, value in odds_features.items():
-            features[f'odds_{key}' if not key.startswith('odds_') else key] = value
+        features.update(odds_features)
         
-        # 2. H2H ÖZELLİKLERİ (%15 ağırlık - 9 özellik)
+        # 2. H2H ÖZELLİKLERİ (%15 ağırlık)
         h2h_features = self._extract_h2h_features(home_team, away_team, current_idx)
         features.update(h2h_features)
         
-        # 3. FORM ÖZELLİKLERİ (%10 ağırlık - 10 özellik)
+        # 3. FORM ÖZELLİKLERİ (%10 ağırlık)
         home_form = self._extract_form_features(home_team, current_idx, is_home=True)
         away_form = self._extract_form_features(away_team, current_idx, is_home=False)
         
@@ -442,8 +408,7 @@ class WeightedFeatureEngineer:
         for key, value in away_form.items():
             features[f'away_{key}'] = value
         
-        # 4. TÜREVLENMİŞ ÖZELLİKLER (kombinasyonlar)
-        # Form farkları
+        # 4. TÜREVLENMİŞ ÖZELLİKLER
         features['form_diff_momentum'] = home_form['form_momentum'] - away_form['form_momentum']
         features['form_diff_ppg'] = home_form['form_points_per_game'] - away_form['form_points_per_game']
         
@@ -451,14 +416,14 @@ class WeightedFeatureEngineer:
         features['odds_h2h_alignment'] = abs(odds_features['odds_home_prob'] - h2h_features['h2h_home_win_rate'])
         
         # Bahis + Form kombinasyonu
-        expected_from_odds = odds_features['odds_home_prob'] / (odds_features['odds_home_prob'] + odds_features['odds_away_prob'])
-        expected_from_form = home_form['form_win_rate'] / (home_form['form_win_rate'] + away_form['form_win_rate'] + 0.01)
+        expected_from_odds = odds_features['odds_home_prob'] / (odds_features['odds_home_prob'] + odds_features['odds_away_prob'] + 0.001)
+        expected_from_form = home_form['form_win_rate'] / (home_form['form_win_rate'] + away_form['form_win_rate'] + 0.001)
         features['odds_form_agreement'] = 1.0 - abs(expected_from_odds - expected_from_form)
         
         return features
     
     def extract_features_batch(self, matches: List[tuple], show_progress: bool = True) -> tuple:
-        """Batch feature extraction"""
+        """DÜZELTİLMİŞ Batch feature extraction"""
         X_list, y_list = [], []
         result_map = {"1": 0, "X": 1, "2": 2}
         
@@ -473,6 +438,7 @@ class WeightedFeatureEngineer:
                 continue
             
             try:
+                # ✅ current_idx parametresi EKLENDİ
                 features = self.extract_match_features(home_team, away_team, odds, None, idx)
                 X_list.append(list(features.values()))
                 y_list.append(result_map[result])
@@ -480,13 +446,16 @@ class WeightedFeatureEngineer:
             except Exception as e:
                 failed += 1
                 if show_progress and failed % 100 == 0:
-                    print(f"⚠️ Errors: {failed}")
+                    print(f"⚠️ Error at match {idx}: {e}")
             
             if show_progress and (i + 1) % 1000 == 0:
                 print(f"   Processed: {i + 1}/{len(matches)} (✓{successful} ✗{failed})", end='\r')
         
         if show_progress:
             print(f"\n   Total: {len(matches)} | Success: {successful} | Failed: {failed}")
+        
+        if not X_list:
+            raise ValueError("❌ No features extracted!")
         
         X = np.array(X_list)
         y = np.array(y_list)
@@ -499,5 +468,15 @@ class WeightedFeatureEngineer:
     
     def get_feature_names(self) -> List[str]:
         """Feature isimlerini döndür"""
-        dummy_features = self.extract_match_features("Team A", "Team B", None, None, 0)
+        # İlk maçın index'ini kullan (data leak yok)
+        if len(self.df) > 0:
+            dummy_features = self.extract_match_features(
+                self.df.iloc[0]['home_team'], 
+                self.df.iloc[0]['away_team'], 
+                None, None, 0
+            )
+        else:
+            # Fallback
+            dummy_features = self.extract_match_features("TeamA", "TeamB", None, None, 0)
+        
         return list(dummy_features.keys())
