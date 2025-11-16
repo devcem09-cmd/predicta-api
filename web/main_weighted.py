@@ -113,10 +113,18 @@ class LiveFeatureEngineer:
         """
         ✅ DÜZELTİLMİŞ: kwargs parametresi eklendi - fazla parametreleri yakalar
         """
+        # ✅ DEBUG: Hangi parametreler geliyor görelim
+        # print(f"DEBUG: extract_match_features called with - home: {home_team}, away: {away_team}, odds: {odds}, kwargs: {kwargs}")
+        
         if self.inner is not None:
-            # Inner feature engineer'a sadece gerekli parametreleri geç
-            return self.inner.extract_match_features(home_team, away_team, odds)
+            try:
+                # Inner feature engineer'a sadece gerekli parametreleri geç
+                return self.inner.extract_match_features(home_team, away_team, odds)
+            except Exception as e:
+                print(f"⚠️  Inner feature engineer failed: {e}, using fallback")
+                # Fallback'e geç
 
+        # Fallback feature extraction
         odds = odds or DEFAULT_ODDS
         try:
             o1, ox, o2 = float(odds["1"]), float(odds["X"]), float(odds["2"])
@@ -125,27 +133,27 @@ class LiveFeatureEngineer:
         except Exception:
             o1, ox, o2, p1, px, p2 = 2.5, 3.2, 2.8, 0.33, 0.33, 0.33
 
-        if WEIGHTED_AVAILABLE:
-            return {
-                "odds_home": o1, "odds_draw": ox, "odds_away": o2,
-                "odds_home_prob": p1, "odds_draw_prob": px, "odds_away_prob": p2,
-                "market_margin": tot - 1.0, "market_confidence": 0.5,
-                "favorite_odds": min(o1, o2), "underdog_odds": max(o1, o2),
-                "odds_spread": abs(o1 - o2),
-                "home_value": 0.0, "draw_value": 0.0, "away_value": 0.0,
-                "draw_odds_level": 0.5, "draw_market_view": px,
-                "clear_favorite": 0.0, "balanced_match": 1.0,
-                "h2h_matches": 0, "h2h_home_win_rate": 0.40, "h2h_draw_rate": 0.27,
-                "h2h_away_win_rate": 0.33, "h2h_avg_home_goals": 1.3,
-                "h2h_avg_away_goals": 1.1, "h2h_avg_total_goals": 2.4,
-                "h2h_high_scoring": 0.0, "h2h_draw_tendency": 0.0,
-                "home_form_win_rate": 0.40, "home_form_points_per_game": 1.2,
-                "home_form_avg_goals_scored": 1.2, "home_form_avg_goals_conceded": 1.2,
-                "home_form_momentum": 0.5,
-                "away_form_win_rate": 0.40, "away_form_points_per_game": 1.2,
-                "away_form_avg_goals_scored": 1.2, "away_form_avg_goals_conceded": 1.2,
-                "away_form_momentum": 0.5,
-            }
+        # Return fallback features
+        return {
+            "odds_home": o1, "odds_draw": ox, "odds_away": o2,
+            "odds_home_prob": p1, "odds_draw_prob": px, "odds_away_prob": p2,
+            "market_margin": tot - 1.0, "market_confidence": 0.5,
+            "favorite_odds": min(o1, o2), "underdog_odds": max(o1, o2),
+            "odds_spread": abs(o1 - o2),
+            "home_value": 0.0, "draw_value": 0.0, "away_value": 0.0,
+            "draw_odds_level": 0.5, "draw_market_view": px,
+            "clear_favorite": 0.0, "balanced_match": 1.0,
+            "h2h_matches": 0, "h2h_home_win_rate": 0.40, "h2h_draw_rate": 0.27,
+            "h2h_away_win_rate": 0.33, "h2h_avg_home_goals": 1.3,
+            "h2h_avg_away_goals": 1.1, "h2h_avg_total_goals": 2.4,
+            "h2h_high_scoring": 0.0, "h2h_draw_tendency": 0.0,
+            "home_form_win_rate": 0.40, "home_form_points_per_game": 1.2,
+            "home_form_avg_goals_scored": 1.2, "home_form_avg_goals_conceded": 1.2,
+            "home_form_momentum": 0.5,
+            "away_form_win_rate": 0.40, "away_form_points_per_game": 1.2,
+            "away_form_avg_goals_scored": 1.2, "away_form_avg_goals_conceded": 1.2,
+            "away_form_momentum": 0.5,
+        }
         else:
             return {
                 "odds_home": o1, "odds_draw": ox, "odds_away": o2,
