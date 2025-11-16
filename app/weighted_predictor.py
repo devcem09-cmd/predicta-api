@@ -285,21 +285,21 @@ class WeightedPredictor:
         return ms_prediction, ms_proba, correction_info
 
     def predict_match_integrated(self,
-                      home_team: str,
-                      away_team: str,
-                      odds: Optional[Dict[str, float]] = None,
-                      feature_engineer=None,
-                      actual_result: Optional[str] = None) -> Dict[str, Any]:
-        """
-        ✅ DÜZELTİLMİŞ ENTEGRE TAHMİN SİSTEMİ
-        - MS, OU, BTTS birlikte tahmin edilir
-        - Otomatik düzeltme entegre
-        """
-        if feature_engineer is None:
-            raise ValueError("❌ FeatureEngineer required for predictions")
+                  home_team: str,
+                  away_team: str,
+                  odds: Optional[Dict[str, float]] = None,
+                  feature_engineer=None,
+                  actual_result: Optional[str] = None) -> Dict[str, Any]:
+    """
+    ✅ TAMAMEN DÜZELTİLMİŞ ENTEGRE TAHMİN SİSTEMİ
+    - Parametre uyumsuzluğu çözüldü
+    """
+    if feature_engineer is None:
+        raise ValueError("❌ FeatureEngineer required for predictions")
 
-        # Özellik çıkarımı (current_idx=None çünkü tahmin zamanı)
-        features = feature_engineer.extract_match_features(home_team, away_team, odds, None, 0)
+    try:
+        # ✅ DÜZELTME: Sadece 3 parametre geç - current_date ve current_idx'i KALDIR
+        features = feature_engineer.extract_match_features(home_team, away_team, odds)
         X = self._prepare_features(features)
         X_scaled = self.scaler.transform(X)
         
@@ -423,6 +423,10 @@ class WeightedPredictor:
             })
 
         return result
+
+    except Exception as e:
+        print(f"❌ Error in predict_match_integrated: {e}")
+        raise
 
     # Backward compatibility
     def predict_match(self, *args, **kwargs):
