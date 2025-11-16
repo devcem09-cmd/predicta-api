@@ -109,8 +109,12 @@ class LiveFeatureEngineer:
             except Exception as e:
                 print(f"⚠️  FE init failed, falling back to odds-only: {e}")
 
-    def extract_match_features(self, home_team: str, away_team: str, odds=None, **_):
+    def extract_match_features(self, home_team: str, away_team: str, odds=None, **kwargs):
+        """
+        ✅ DÜZELTİLMİŞ: kwargs parametresi eklendi - fazla parametreleri yakalar
+        """
         if self.inner is not None:
+            # Inner feature engineer'a sadece gerekli parametreleri geç
             return self.inner.extract_match_features(home_team, away_team, odds)
 
         odds = odds or DEFAULT_ODDS
