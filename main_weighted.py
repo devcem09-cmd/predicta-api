@@ -533,20 +533,6 @@ async def predict_full_match(data: dict):
         was_corrected = auto_correction.get("was_corrected", False)
         correction_reason = auto_correction.get("correction_reason", "")
         
-        # ✅ Mantık validasyonu (opsiyonel - sadece monitoring için)
-        validation_result = {
-            "is_valid": True,
-            "warnings": [],
-            "auto_correction_applied": was_corrected
-        }
-        
-        if was_corrected:
-            validation_result["warnings"].append({
-                "severity": "INFO",
-                "type": "auto_correction_applied",
-                "message": correction_reason
-            })
-        
         # ✅ Response'u formatla
         response = {
             "match": {
@@ -580,7 +566,6 @@ async def predict_full_match(data: dict):
                     }
                 }
             },
-            "validation": validation_result,
             "system_info": {
                 "predictor_type": PREDICTOR_TYPE,
                 "integrated_prediction": True,
